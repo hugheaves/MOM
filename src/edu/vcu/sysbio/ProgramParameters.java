@@ -2,7 +2,10 @@
  * Copyright (c) 2007 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ProgramParameters.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/06/10 13:48:48  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  */
@@ -34,6 +37,7 @@ public class ProgramParameters {
 
 	public static final int SEARCH_METHOD_GENOME = 1;
 	public static final int SEARCH_METHOD_QUERIES = 2;
+	public static final int SEARCH_METHOD_GEN_READS = 4;
 	
 	private static HashMap<String, ParamMetaData> mainParameters = new HashMap();
 

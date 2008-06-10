@@ -1,6 +1,9 @@
 /*
  * $Log: QueriesAligner.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/06/10 13:48:46  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  */
@@ -25,13 +28,13 @@ public class QueriesAligner extends Aligner implements KmerProcessor,
 	private final int startPos;
 	private final int endPos;
 	private static int segmentCount = 0;
-	private static IntSet locations = new IntOpenHashSet();
-//	private static IntSet locations = new IntRBTreeSet();
 	private static int locationCount = 0;
 	
+    private static IntSet locations = new IntOpenHashSet();
+		
 	public QueriesAligner(InputFile queriesFile, KmerIndex genomeIndex,
 			int startPos, int endPos, ProgramParameters parameters,
-			ObjectSet<Match> results, byte[] matchCounts) {
+			ObjectSet<Match> results, byte[] matchCounts, byte[] checkedPositions) {
 		super(genomeIndex.file.data, queriesFile.data, queriesFile.queryLength,
 				parameters.minMatchLength, parameters.maxMismatches,
 				genomeIndex.file.fileNum, results, matchCounts);
