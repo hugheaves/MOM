@@ -1,6 +1,9 @@
 /*
  * $Log: InputFile.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  */
@@ -24,8 +27,7 @@ public class InputFile {
 	public String fileName;
 	public int fileNum;
 	public boolean reverseData;
-	public boolean genomeFile;
-	public int queryLength;
+	public boolean referenceFile;
 
 	public byte[] data;
 	public int[] dataOffsets;
@@ -35,29 +37,29 @@ public class InputFile {
 	/**
 	 * @param fileName
 	 * @param reverse
-	 * @param genomeFile
+	 * @param referenceFile
 	 * @param queryLength
 	 */
 	public InputFile(String fileName, int fileNum, boolean reverseData,
-			boolean genomeFile, int queryLength) {
+			boolean referenceFile) {
 		this.fileName = fileName;
 		this.fileNum = fileNum;
 		this.reverseData = reverseData;
-		this.genomeFile = genomeFile;
-		this.queryLength = queryLength;
+		this.referenceFile = referenceFile;
 	}
 
-	public void loadFile() throws SearchException {
+	public void loadFile() {
 		try {
 			int fileLength;
 			byte[] fileBuffer = new byte[READ_BUFFER_SIZE];
 			int bufferPos = 0;
 			int bytesRead = 0;
 
+			System.out.println("Reading file " + fileName + ", first pass");
+
 			File file = new File(fileName);
 			fileLength = (int) file.length();
 
-			System.out.println("Reading file " + fileName + ", first pass");
 			InputStream is = new BufferedInputStream(new FileInputStream(file));
 
 //			InputStream is = new FileInputStream(file);
@@ -85,7 +87,7 @@ public class InputFile {
 							|| ch == WILDCARD_CHAR) {
 						++dataPos;
 					} else if (ch == 13 || ch == 10) {
-						if (!genomeFile && dataPos % queryLength != 0) {
+						if (!referenceFile && dataPos % ProgramParameters.queryLength != 0) {
 							throw new SearchException(
 									"Invalid length query in file  ["
 											+ fileName + "] at byte "
@@ -93,7 +95,7 @@ public class InputFile {
 						}
 					} else if (ch == '>') {
 						inHeader = true;
-						if (genomeFile && numHeaders > 0) {
+						if (referenceFile && numHeaders > 0) {
 							++numSegments;
 							if (reverseData) {
 								++numSegments;
@@ -122,10 +124,10 @@ public class InputFile {
 
 			// allocate space for the data
 			if (reverseData) {
-				data = new byte[dataPos * 2 + ((numSegments + 1) * queryLength)];
+				data = new byte[dataPos * 2 + ((numSegments + 1) * ProgramParameters.queryLength)];
 			} else {
 
-				data = new byte[dataPos + ((numSegments + 1) * queryLength)];
+				data = new byte[dataPos + ((numSegments + 1) * ProgramParameters.queryLength)];
 
 			}
 			dataOffsets = new int[numSegments + 1];
@@ -140,8 +142,8 @@ public class InputFile {
 			bytesProcessed = 0;
 			inHeader = false;
 
-			Arrays.fill(data, dataPos, dataPos + queryLength, NOMATCH_CHAR);
-			dataPos += queryLength;
+			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+			dataPos += ProgramParameters.queryLength;
 
 			System.out.println("Reading file " + fileName + ", second pass");
 			is = new BufferedInputStream(new FileInputStream(file));
@@ -162,13 +164,13 @@ public class InputFile {
 
 					} else if (ch == '>') {
 						inHeader = true;
-						if (genomeFile && numHeaders > 0) {
+						if (referenceFile && numHeaders > 0) {
 							dataOffsets[++numSegments] = dataPos;
-							Arrays.fill(data, dataPos, dataPos + queryLength,
+							Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength,
 									NOMATCH_CHAR);
-							dataPos += queryLength;
+							dataPos += ProgramParameters.queryLength;
 							if (reverseData) {
-								dataPos = reverseGenome(numSegments++, dataPos);
+								dataPos = reverseReference(numSegments++, dataPos);
 
 							}
 						}
@@ -186,10 +188,10 @@ public class InputFile {
 			is.close();
 
 			dataOffsets[++numSegments] = dataPos;
-			Arrays.fill(data, dataPos, dataPos + queryLength, NOMATCH_CHAR);
-			dataPos += queryLength;
+			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+			dataPos += ProgramParameters.queryLength;
 			if (reverseData) {
-				dataPos = reverseGenome(numSegments++, dataPos);
+				dataPos = reverseReference(numSegments++, dataPos);
 			}
 
 		} catch (FileNotFoundException e) {
@@ -199,9 +201,9 @@ public class InputFile {
 		}
 	}
 
-	private int reverseGenome(int numSegments, int dataPos) {
+	private int reverseReference(int numSegments, int dataPos) {
 		for (int readPos = dataOffsets[numSegments] - 1; readPos >= dataOffsets[numSegments - 1]
-				+ queryLength; --readPos) {
+				+ ProgramParameters.queryLength; --readPos) {
 			byte ch = data[readPos];
 			switch (ch) {
 			case 'A':
@@ -223,8 +225,8 @@ public class InputFile {
 		}
 
 		dataOffsets[numSegments + 1] = dataPos;
-		Arrays.fill(data, dataPos, dataPos + queryLength, NOMATCH_CHAR);
-		dataPos += queryLength;
+		Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+		dataPos += ProgramParameters.queryLength;
 
 		return dataPos;
 

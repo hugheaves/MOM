@@ -1,6 +1,9 @@
 /*
  * $Log: SearchException.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  * Revision 1.2  2008-02-29 16:50:09  hugh
@@ -10,7 +13,7 @@
  */
 package edu.vcu.sysbio;
 
-public class SearchException extends Exception {
+public class SearchException extends RuntimeException {
 	public SearchException() {
 		super();
 	}

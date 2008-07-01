@@ -2,7 +2,10 @@
  * Copyright (c) 2007 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ProgramParameters.java,v $
- * Revision 1.2  2008/06/10 13:48:48  hugh
+ * Revision 1.3  2008/07/01 15:59:21  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-06-10 13:48:48  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -26,64 +29,80 @@ import java.util.Map.Entry;
 
 public class ProgramParameters {
 	public static final String PARAM_MIN_MATCH_LENGTH = "q";
-	public static final String PARAM_QUERY_SIZE = "s";
+	public static final String PARAM_QUERY_LENGTH = "s";
 	public static final String PARAM_MAX_MISMATCHES = "k";
 	public static final String PARAM_NUM_THREADS = "numThreads";
 	public static final String PARAM_OUTPUT_FILE = "output";
 	public static final String PARAM_QUERIES_FILE = "query";
-	public static final String PARAM_GENOME_FILE = "genome";
-	public static final String PARAM_QUERY_KMER_INTERVAL = "queryKmerInterval";
+	public static final String PARAM_REFERENCE_FILE = "genome";
 	public static final String PARAM_SEARCH_METHOD = "searchMethod";
+	public static final String PARAM_KMER_LENGTH = "kmerLength";
+	public static final String PARAM_REFERENCE_KMER_INTERVAL = "referenceKmerInterval";
+	public static final String PARAM_QUERY_KMER_INTERVAL = "queryKmerInterval";
+	public static final String PARAM_MAX_MATCHES_PER_QUERY = "maxMatchesPerQuery";
 
-	public static final int SEARCH_METHOD_GENOME = 1;
-	public static final int SEARCH_METHOD_QUERIES = 2;
-	public static final int SEARCH_METHOD_GEN_READS = 4;
-	
 	private static HashMap<String, ParamMetaData> mainParameters = new HashMap();
 
 	static {
 		mainParameters.put(PARAM_MAX_MISMATCHES, new ParamMetaData(
-				PARAM_MAX_MISMATCHES, "maximum number of mismatches", "2",
+				PARAM_MAX_MISMATCHES, "maximum number of mismatches", true,
 				ParamMetaData.Type.INTEGER));
 		mainParameters.put(PARAM_QUERIES_FILE, new ParamMetaData(
-				PARAM_QUERIES_FILE, "filename containing queries", null,
+				PARAM_QUERIES_FILE, "filename containing queries", true,
 				ParamMetaData.Type.INPUT_FILE));
 		mainParameters.put(PARAM_MIN_MATCH_LENGTH, new ParamMetaData(
-				PARAM_MIN_MATCH_LENGTH, "minimum match size", "36",
+				PARAM_MIN_MATCH_LENGTH, "minimum match length", true,
 				ParamMetaData.Type.INTEGER));
 		mainParameters.put(PARAM_OUTPUT_FILE, new ParamMetaData(
-				PARAM_OUTPUT_FILE, "filename for output", null,
+				PARAM_OUTPUT_FILE, "filename for output", true,
 				ParamMetaData.Type.OUTPUT_FILE));
+		mainParameters.put(PARAM_SEARCH_METHOD, new ParamMetaData(
+				PARAM_SEARCH_METHOD, "search method", true,
+				ParamMetaData.Type.STRING));
+		mainParameters.put(PARAM_QUERY_LENGTH, new ParamMetaData(
+				PARAM_QUERY_LENGTH, "query length", true,
+				ParamMetaData.Type.INTEGER));
+
 		mainParameters.put(PARAM_NUM_THREADS, new ParamMetaData(
-				PARAM_NUM_THREADS, "number of threads", "1",
+				PARAM_NUM_THREADS, "number of threads", false,
 				ParamMetaData.Type.INTEGER));
 		mainParameters.put(PARAM_QUERY_KMER_INTERVAL, new ParamMetaData(
-				PARAM_QUERY_KMER_INTERVAL, "query kmer interval", null,
+				PARAM_QUERY_KMER_INTERVAL, "query kmer interval", false,
 				ParamMetaData.Type.INTEGER));
-		mainParameters.put(PARAM_SEARCH_METHOD, new ParamMetaData(
-				PARAM_SEARCH_METHOD, "search method", null,
+		mainParameters.put(PARAM_REFERENCE_KMER_INTERVAL, new ParamMetaData(
+				PARAM_REFERENCE_KMER_INTERVAL, "reference kmer interval",
+				false, ParamMetaData.Type.INTEGER));
+		mainParameters.put(PARAM_KMER_LENGTH, new ParamMetaData(
+				PARAM_KMER_LENGTH, "kmer length", false,
 				ParamMetaData.Type.INTEGER));
-		mainParameters.put(PARAM_QUERY_SIZE, new ParamMetaData(
-				PARAM_QUERY_SIZE, "query size", null,
+		mainParameters.put(PARAM_MAX_MATCHES_PER_QUERY, new ParamMetaData(
+				PARAM_MAX_MATCHES_PER_QUERY, "max matches per query", false,
 				ParamMetaData.Type.INTEGER));
-
 	}
 
-	private static ParamMetaData genomeParam = new ParamMetaData(
-			PARAM_GENOME_FILE, "filename containing genome data", null,
+	private static ParamMetaData referenceParam = new ParamMetaData(
+			PARAM_REFERENCE_FILE, "filename containing reference data", false,
 			ParamMetaData.Type.INPUT_FILE);
 
-	public int minMatchLength;
-	public int queryLength;
-	public int numThreads;
-	public int maxMismatches;
-	public String queryFileName;
-	public List<String> genomeFileNames = new ArrayList();
-	public String outputFileName;
-	public int queryKmerInterval;
-	public int searchMethod;
+	public static final String SEARCH_METHOD_INDEX_QUERIES = "indexQueries";
+	public static final String SEARCH_METHOD_INDEX_REFERENCE = "indexReference";
+	public static final String SEARCH_METHOD_INDEX_BOTH = "indexBoth";
+	public static final String SEARCH_METHOD_GEN_READS = "genReads";
 
-	public boolean loadFromCommandLine(String[] args) throws IOException {
+	public static int minMatchLength;
+	public static int queryLength;
+	public static int numThreads;
+	public static int maxMismatches;
+	public static String queryFileName;
+	public static List<String> referenceFileNames = new ArrayList();
+	public static String outputFileName;
+	public static String searchMethod;
+	public static int kmerLength;
+	public static int referenceKmerInterval;
+	public static int queryKmerInterval;
+	public static int maxMatchesPerQuery;
+
+	public static boolean loadFromCommandLine(String[] args) throws IOException {
 		Properties properties = new Properties();
 
 		for (int i = 0; i < args.length; ++i) {
@@ -110,17 +129,18 @@ public class ProgramParameters {
 
 	}
 
-	private boolean validateParameter(Properties properties,
+	private static boolean validateParameter(Properties properties,
 			ParamMetaData metaData) {
 
 		String paramValue = properties.getProperty(metaData.getName());
 		if (paramValue == null) {
-			if (metaData.getDefaultValue() == null) {
+			if (metaData.isRequired()) {
 				System.out.println("Parameter '" + metaData.getName()
 						+ "' is missing. Must specify '"
 						+ metaData.getDescription() + "'.");
+				return false;
 			} else {
-				paramValue = metaData.getDefaultValue();
+				return true;
 			}
 		}
 
@@ -151,68 +171,123 @@ public class ProgramParameters {
 			try {
 				Integer.parseInt(paramValue);
 			} catch (NumberFormatException e) {
+				System.out.println("Value for parameter " + metaData.getName()
+						+ " must be an integer.");
 				return false;
 			}
+		} else if (metaData.getType() == ParamMetaData.Type.BOOLEAN) {
+			Boolean.parseBoolean(paramValue);
 		}
 
 		return true;
 	}
 
-	private boolean validateAndLoadProperties(Properties properties) {
+	private static boolean validateAndLoadProperties(Properties properties) {
 
-		boolean haveErrors = false;
+		int errorCount = 0;
 
 		for (Iterator<Entry<String, ParamMetaData>> i = mainParameters
 				.entrySet().iterator(); i.hasNext();) {
 			if (!validateParameter(properties, i.next().getValue())) {
-				haveErrors = true;
+				++errorCount;
 			}
 		}
 
-		if (!haveErrors) {
+		if (errorCount == 0) {
 			minMatchLength = Integer.parseInt(properties
 					.getProperty(PARAM_MIN_MATCH_LENGTH));
 
 			queryLength = Integer.parseInt(properties
-					.getProperty(PARAM_QUERY_SIZE));
-
-			numThreads = Integer.parseInt(properties
-					.getProperty(PARAM_NUM_THREADS));
+					.getProperty(PARAM_QUERY_LENGTH));
 
 			maxMismatches = Integer.parseInt(properties
 					.getProperty(PARAM_MAX_MISMATCHES));
 
-			queryKmerInterval = Integer.parseInt(properties
-					.getProperty(PARAM_QUERY_KMER_INTERVAL));
-
 			queryFileName = properties.getProperty(PARAM_QUERIES_FILE);
 
 			outputFileName = properties.getProperty(PARAM_OUTPUT_FILE);
-			
-			searchMethod = Integer.parseInt(properties
-					.getProperty(PARAM_SEARCH_METHOD));
-		}
 
-		if (validateParameter(properties, genomeParam)) {
-			genomeFileNames.add(properties.getProperty(PARAM_GENOME_FILE));
-		} else {
-			int i = 1;
-			String propName = PARAM_GENOME_FILE + i;
-			while ((properties.getProperty(propName) != null)) {
-				genomeParam.setName(propName);
-				if (validateParameter(properties, genomeParam)) {
-					genomeFileNames.add(properties.getProperty(propName));
-				} else {
-					haveErrors = true;
-				}
-				++i;
+			searchMethod = properties.getProperty(PARAM_SEARCH_METHOD);
+			if (!SEARCH_METHOD_INDEX_QUERIES.equals(searchMethod)
+					&& !SEARCH_METHOD_INDEX_REFERENCE.equals(searchMethod)
+					&& !SEARCH_METHOD_INDEX_BOTH.equals(searchMethod)
+					&& !SEARCH_METHOD_GEN_READS.equals(searchMethod)) {
+				System.out.println("Invalid " + PARAM_SEARCH_METHOD
+						+ " parameter specified. Specify one of:");
+				System.out.println(" " + SEARCH_METHOD_INDEX_QUERIES);
+				System.out.println(" " + SEARCH_METHOD_INDEX_REFERENCE);
+				System.out.println(" " + SEARCH_METHOD_INDEX_BOTH);
+				System.out.println(" " + SEARCH_METHOD_GEN_READS);
+				++errorCount;
 			}
+
+			if (properties.getProperty(PARAM_NUM_THREADS) != null) {
+				numThreads = Integer.parseInt(properties
+						.getProperty(PARAM_NUM_THREADS));
+			} else {
+				numThreads = 1;
+			}
+
+			if (properties.getProperty(PARAM_KMER_LENGTH) != null) {
+				kmerLength = Integer.parseInt(properties
+						.getProperty(PARAM_KMER_LENGTH));
+			} else {
+				kmerLength = minMatchLength / (maxMismatches + 1);
+
+				if (kmerLength > 32) {
+					kmerLength = 32;
+				}
+			}
+
+			if (properties.getProperty(PARAM_QUERY_KMER_INTERVAL) != null) {
+				queryKmerInterval = Integer.parseInt(properties
+						.getProperty(PARAM_QUERY_KMER_INTERVAL));
+			} else {
+				queryKmerInterval = kmerLength;
+			}
+
+			if (properties.getProperty(PARAM_REFERENCE_KMER_INTERVAL) != null) {
+				referenceKmerInterval = Integer.parseInt(properties
+						.getProperty(PARAM_REFERENCE_KMER_INTERVAL));
+			} else {
+				referenceKmerInterval = 1;
+			}
+
+			if (properties.getProperty(PARAM_MAX_MATCHES_PER_QUERY) != null) {
+				maxMatchesPerQuery = Integer.parseInt(properties
+						.getProperty(PARAM_MAX_MATCHES_PER_QUERY));
+			} else {
+				maxMatchesPerQuery = -1;
+			}
+
 		}
 
-		if (genomeFileNames.size() == 0) {
-			haveErrors = true;
+		if (validateParameter(properties, referenceParam)) {
+			if (properties.getProperty(PARAM_REFERENCE_FILE) != null)
+			referenceFileNames
+					.add(properties.getProperty(PARAM_REFERENCE_FILE));
+		} else {
+			++errorCount;
 		}
 
-		return !haveErrors;
+		int i = 1;
+		String propName = PARAM_REFERENCE_FILE + i;
+		while ((properties.getProperty(propName) != null)) {
+			referenceParam.setName(propName);
+			if (validateParameter(properties, referenceParam)) {
+				referenceFileNames.add(properties.getProperty(propName));
+			} else {
+				++errorCount;
+			}
+			++i;
+			propName = PARAM_REFERENCE_FILE + i;
+		}
+
+		if (referenceFileNames.size() == 0) {
+			System.out.println("Must specify at least one reference file");
+			++errorCount;
+		}
+
+		return (errorCount == 0);
 	}
 }

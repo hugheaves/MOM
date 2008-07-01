@@ -1,6 +1,9 @@
 /*
  * $Log: ParamMetaData.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/07/01 15:59:21  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  * Revision 1.2  2008-02-25 20:47:26  hugh
@@ -16,7 +19,7 @@ package edu.vcu.sysbio;
 /**
  * @author Hugh
  * @since Feb 19, 2008
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  *
  */
 public class ParamMetaData {
@@ -28,11 +31,11 @@ public class ParamMetaData {
 	private String description;
 
 	/* A default value, or "null" of there isn't one */
-	private String defaultValue;
+	private boolean required;
 
 	/* the "Type" of this parameter - is it an integer or string value */
 	public enum Type {
-		INTEGER, INPUT_FILE, OUTPUT_FILE
+		INTEGER, INPUT_FILE, OUTPUT_FILE, BOOLEAN, STRING
 	};
 
 	private Type type;
@@ -44,12 +47,12 @@ public class ParamMetaData {
 	 * @param defaultValue
 	 * @param type
 	 */
-	public ParamMetaData(String name, String description, String defaultValue,
+	public ParamMetaData(String name, String description, boolean required,
 			Type type) {
 		super();
 		this.name = name;
 		this.description = description;
-		this.defaultValue = defaultValue;
+		this.required = required;
 		this.type = type;
 	}
 
@@ -69,12 +72,12 @@ public class ParamMetaData {
 		this.description = description;
 	}
 
-	public String getDefaultValue() {
-		return defaultValue;
+	public boolean isRequired() {
+		return required;
 	}
 
-	public void setDefaultValue(String defaultValue) {
-		this.defaultValue = defaultValue;
+	public void setRequired(boolean required) {
+		this.required = required;
 	}
 
 	public Type getType() {

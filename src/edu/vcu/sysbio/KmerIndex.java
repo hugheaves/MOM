@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: KmerIndex.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  * Revision 1.2  2008-03-25 19:50:42  hugh
@@ -20,9 +23,7 @@ package edu.vcu.sysbio;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
 
@@ -30,37 +31,36 @@ public class KmerIndex implements KmerProcessor {
 	private static Logger log = Logger.getLogger(KmerIndex.class.toString());
 
 	public final InputFile file;
-	public final int kmerLength;
-	// public int kmerCount = 0;
-
 	public static final int INITIAL_ARRAY_SIZE = 1;
 	private KmerPositionList nullList = new KmerPositionList();
-	private int kmerInterval;
+	int start;
+	int end;
+	static int segment = 0;
 
-	private Long2ObjectMap<KmerPositionList> kmerPositionsMap = new Long2ObjectOpenHashMap<KmerPositionList>();
+	private Long2ObjectOpenHashMap<KmerPositionList> kmerPositionsMap = null;
 
-	// private Map<Long, KmerPositionList> kmerPositionsMap = new HashMap<Long,
-	// KmerPositionList>();
-
-	public KmerIndex(InputFile file, int kmerLength, int kmerInterval) {
+	public KmerIndex(InputFile file) {
 		this.file = file;
-		this.kmerLength = kmerLength;
-		this.kmerInterval = kmerInterval;
+		kmerPositionsMap = new Long2ObjectOpenHashMap<KmerPositionList>(
+				KmerUtil.calculateIndexSize(file));
 	}
 
-	public void buildIndex() {
-		// kmerCount = 0;
-		if (file.genomeFile) {
-			KmerUtil.generateGenomeKmers(file.data, 0, file.data.length,
-					kmerLength, kmerInterval, this);
+	public Object call() throws Exception {
+		if (file.referenceFile) {
+			KmerUtil.generateReferenceKmers(file.data, start, end,
+					ProgramParameters.kmerLength,
+					ProgramParameters.referenceKmerInterval, this);
 
 		} else {
-			KmerUtil.generateQueryKmers(file.data, 0, file.data.length,
-					kmerLength, kmerInterval, file.queryLength,
-					"Indexing queries", this);
-
+			KmerUtil.generateQueryKmers(file.data, start, end,
+					ProgramParameters.kmerLength,
+					ProgramParameters.queryKmerInterval,
+					ProgramParameters.queryLength, "Indexing queries", this);
 		}
-		// System.out.println ("kmerCont = " + kmerCount);
+
+		++segment;
+		System.out.println("Finished indexing segment " + segment);
+		return null;
 	}
 
 	/**
@@ -71,19 +71,20 @@ public class KmerIndex implements KmerProcessor {
 	 * @param i
 	 */
 	public void processKmer(long kmer, int position) {
-		// ++kmerCount;
+		KmerPositionList positions;
 
-//		 System.out.println ("kmer = " + KmerUtil.kmerToString(kmer,
-//		 kmerLength) + ", pos = " + position);
+		synchronized (kmerPositionsMap) {
+			positions = kmerPositionsMap.get(kmer);
 
-		KmerPositionList positions = kmerPositionsMap.get(kmer);
-
-		if (positions == null) {
-			positions = new KmerPositionList();
-			kmerPositionsMap.put(kmer, positions);
+			if (positions == null) {
+				positions = new KmerPositionList();
+				kmerPositionsMap.put(kmer, positions);
+			}
 		}
 
-		positions.addPosition(position);
+		synchronized (positions) {
+			positions.addPosition(position);
+		}
 
 	}
 
@@ -101,11 +102,33 @@ public class KmerIndex implements KmerProcessor {
 				.entrySet().iterator(); i.hasNext();) {
 			Entry<Long, KmerPositionList> entry = i.next();
 			System.out.println("kmer: "
-					+ KmerUtil.kmerToString(entry.getKey(), kmerLength));
+					+ KmerUtil.kmerToString(entry.getKey(),
+							ProgramParameters.kmerLength));
 			for (int j = 0; j < entry.getValue().positionCount; ++j) {
 				System.out.println("  position:"
 						+ entry.getValue().positions[j]);
 			}
 		}
 	}
+
+	public int getStart() {
+		return start;
+	}
+
+	public void setStart(int start) {
+		this.start = start;
+	}
+
+	public int getEnd() {
+		return end;
+	}
+
+	public void setEnd(int end) {
+		this.end = end;
+	}
+
+	public Object clone() throws CloneNotSupportedException {
+		return super.clone();
+	}
+
 }

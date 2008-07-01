@@ -1,6 +1,9 @@
 /*
  * $Log: Aligner.java,v $
- * Revision 1.2  2008/06/25 19:05:56  hugh
+ * Revision 1.3  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-06-25 19:05:56  hugh
  * Performance optimizations
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -13,27 +16,31 @@ package edu.vcu.sysbio;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 public class Aligner {
-	protected int mismatchOffsets[];
+	private int mismatchOffsets[];
 	// protected final int queryLength;
-	// protected final int maxMismatches;
+	private final int maxMismatches;
 	protected final byte[] reference;
 	protected final byte[] queries;
-	protected final byte[] matchCounts;
-	protected final int fileNum;
-	protected final ObjectSet<Match> results;
-	protected final int[] alreadyCompared;
-
+	private final byte[] matchCounts;
+	private final int fileNum;
+	private final ObjectSet<Match> results;
+	private final int[] alreadyCompared;
+	private final int maxTotalMismatches;
+	
 	public Aligner(byte[] reference, byte[] queries, int fileNum,
 			ObjectSet<Match> results, byte[] matchCounts, int[] alreadyCompared) {
 		this.mismatchOffsets = new int[ProgramParameters.queryLength];
 		// this.queryLength = ProgramParameters.queryLength;
-		// this.maxMismatches = ProgramParameters.maxMismatches;
+		this.maxMismatches = ProgramParameters.maxMismatches;
 		this.reference = reference;
 		this.queries = queries;
 		this.fileNum = fileNum;
 		this.results = results;
 		this.matchCounts = matchCounts;
 		this.alreadyCompared = alreadyCompared;
+		this.maxTotalMismatches = ProgramParameters.queryLength
+		- ProgramParameters.minMatchLength
+		+ ProgramParameters.maxMismatches;
 	}
 
 	/**
@@ -72,9 +79,6 @@ public class Aligner {
 		int longestMatchMismatchesOffset = 0;
 		int currentNumMismatches = 0;
 		int totalMismatches = 0;
-		final int maxTotalMismatches = ProgramParameters.queryLength
-				- ProgramParameters.minMatchLength
-				+ ProgramParameters.maxMismatches;
 
 		// "caterpillar" through the string to find the largest matching
 		// substring with k mismatches
@@ -94,11 +98,11 @@ public class Aligner {
 				// increment mismatching character count
 				++currentNumMismatches;
 
-				if (currentNumMismatches > ProgramParameters.maxMismatches) {
+				if (currentNumMismatches > maxMismatches) {
 					// if we're "maxed out" on mismatches, we "eat" a mismatch
 					// from the beginning
 					startPos = mismatchOffsets[totalMismatches
-							- ProgramParameters.maxMismatches - 1] + 1;
+							- maxMismatches - 1] + 1;
 					--currentNumMismatches;
 				}
 			}

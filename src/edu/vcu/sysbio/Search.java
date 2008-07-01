@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: Search.java,v $
- * Revision 1.2  2008/06/10 13:48:48  hugh
+ * Revision 1.3  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-06-10 13:48:48  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -35,9 +38,6 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
@@ -49,71 +49,70 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 public class Search {
+	private static final int NUM_TASKS_PER_THREAD = 50;
+
 	private static Logger log = Logger.getLogger(Search.class.toString());
 
-	private int kmerLength;
-
-	// private Set<Match> results = new HashSet<Match>();
-	// private Int2ObjectMap<ObjectSet<Match>> results = new
-	// Int2ObjectOpenHashMap<ObjectSet<Match>>();
 	private ObjectSet<Match> results = new ObjectOpenHashSet<Match>();
 
 	private byte[] matchCounts = null;
 
-	private ProgramParameters parameters;
+	private ExecutorService executor;
 
-	public void search(ProgramParameters parameters) throws SearchException {
-		this.parameters = parameters;
+	public void search() throws SearchException {
+		System.out.println("Using kmer length of "
+				+ ProgramParameters.kmerLength + ".");
+		System.out.println("Using reference kmer interval of "
+				+ ProgramParameters.referenceKmerInterval + ".");
+		System.out.println("Using queries kmer interval of "
+				+ ProgramParameters.queryKmerInterval + ".");
+		System.out.println("Using max matches per query of "
+				+ ProgramParameters.maxMatchesPerQuery + ".");
+		System.out.println("Number of threads is "
+				+ ProgramParameters.numThreads + ".");
+		System.out.flush();
 
-		kmerLength = parameters.minMatchLength / (parameters.maxMismatches + 1);
-
-		if (kmerLength > 32) {
-			kmerLength = 32;
-		}
-
-		System.out.println("Using kmer length of " + kmerLength + ".");
-
-		if (parameters.numThreads > 1) {
+		if (ProgramParameters.numThreads > 1) {
 			results = ObjectSets.synchronize(results);
 		}
 
-		if (parameters.searchMethod == ProgramParameters.SEARCH_METHOD_GENOME) {
+		executor = Executors.newFixedThreadPool(ProgramParameters.numThreads);
+
+		if (ProgramParameters.SEARCH_METHOD_INDEX_QUERIES
+				.equals(ProgramParameters.searchMethod)) {
 			indexQueriesSearch();
-		} else if (parameters.searchMethod == ProgramParameters.SEARCH_METHOD_QUERIES) {
-			indexGenomeSearch();
-		} else if (parameters.searchMethod == ProgramParameters.SEARCH_METHOD_GEN_READS) {
+		} else if (ProgramParameters.SEARCH_METHOD_INDEX_REFERENCE
+				.equals(ProgramParameters.searchMethod)) {
+			indexReferenceSearch();
+		} else if (ProgramParameters.SEARCH_METHOD_GEN_READS
+				.equals(ProgramParameters.searchMethod)) {
 			generateReads();
 		}
 
 		TimerEvent.printTotals();
 	}
 
-	private InputFile loadGenomeFile(int i) throws SearchException {
-		TimerEvent.EVENT_LOAD_GENOME_FILE.start();
-		InputFile genomeFile = new InputFile(parameters.genomeFileNames.get(i),
-				i, true, true, parameters.queryLength);
-		genomeFile.loadFile();
-		TimerEvent.EVENT_LOAD_GENOME_FILE.stop();
-		return genomeFile;
+	private InputFile loadReferenceFile(int i) {
+		TimerEvent.EVENT_LOAD_REFERENCE_FILE.start();
+		InputFile referenceFile = new InputFile(
+				ProgramParameters.referenceFileNames.get(i), i, true, true);
+		referenceFile.loadFile();
+		TimerEvent.EVENT_LOAD_REFERENCE_FILE.stop();
+		return referenceFile;
 	}
 
-	private InputFile loadQueriesFile() throws SearchException {
+	private InputFile loadQueriesFile() {
 		TimerEvent.EVENT_LOAD_QUERY_FILE.start();
-		InputFile queriesFile = new InputFile(parameters.queryFileName, 0,
-				false, false, parameters.queryLength);
+		InputFile queriesFile = new InputFile(ProgramParameters.queryFileName,
+				0, false, false);
 		queriesFile.loadFile();
 		TimerEvent.EVENT_LOAD_QUERY_FILE.stop();
 
@@ -122,84 +121,139 @@ public class Search {
 
 	private KmerIndex indexQueriesFile(InputFile queriesFile) {
 		TimerEvent.EVENT_INDEX_QUERIES.start();
-		KmerIndex queriesIndex = new KmerIndex(queriesFile, kmerLength,
-				parameters.queryKmerInterval);
-		queriesIndex.buildIndex();
+		KmerIndex queriesIndex = new KmerIndex(queriesFile);
+		Collection<Callable<Object>> tasks;
+
+		tasks = KmerUtil.buildTasks(queriesFile, queriesIndex,
+				ProgramParameters.numThreads * NUM_TASKS_PER_THREAD);
+		try {
+			executor.invokeAll(tasks);
+		} catch (InterruptedException e) {
+			System.out.println("Exception: " + e);
+			throw new SearchException(e);
+		}
+
 		TimerEvent.EVENT_INDEX_QUERIES.stop();
 		return queriesIndex;
 	}
 
-	private KmerIndex indexGenomeFile(InputFile genomeFile) {
-		TimerEvent.EVENT_INDEX_GENOME.start();
-		KmerIndex genomeIndex = new KmerIndex(genomeFile, kmerLength, 1);
-		genomeIndex.buildIndex();
-		TimerEvent.EVENT_INDEX_GENOME.stop();
-		return genomeIndex;
+	private KmerIndex indexReferenceFile(InputFile referenceFile) {
+		TimerEvent.EVENT_INDEX_REFERENCE.start();
+		KmerIndex referenceIndex = new KmerIndex(referenceFile);
+		Collection<Callable<Object>> tasks;
+		try {
+			tasks = KmerUtil.buildTasks(referenceFile, referenceIndex,
+					ProgramParameters.numThreads * NUM_TASKS_PER_THREAD);
+			executor.invokeAll(tasks);
+		} catch (InterruptedException e) {
+			System.out.println("Exception: " + e);
+			throw new SearchException(e);
+		}
+		TimerEvent.EVENT_INDEX_REFERENCE.stop();
+		return referenceIndex;
 	}
 
-	private void indexGenomeSearch() throws SearchException {
-		List<InputFile> genomeFiles = new ArrayList();
+	private void indexReferenceSearch() {
+		List<InputFile> referenceFiles = new ArrayList();
+
+		int[] checkedPositions;
+
 		InputFile queriesFile = loadQueriesFile();
 
 		matchCounts = new byte[queriesFile.data.length
-				/ queriesFile.queryLength + 1];
+				/ ProgramParameters.queryLength + 1];
 
-		for (int i = 0; i < parameters.genomeFileNames.size(); ++i) {
-			InputFile genomeFile = loadGenomeFile(i);
-			genomeFiles.add(genomeFile);
-			KmerIndex genomeIndex = indexGenomeFile(genomeFile);
-			byte[] checkedPositions = new byte[genomeFile.dataOffsets[2] - genomeFile.dataOffsets[0]];
-			
-			QueriesAligner aligner = new QueriesAligner(queriesFile,
-					genomeIndex, 0, queriesFile.data.length, parameters,
-					results, matchCounts, checkedPositions);
+		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
+			InputFile referenceFile = loadReferenceFile(i);
+			referenceFiles.add(referenceFile);
+			KmerIndex referenceIndex = indexReferenceFile(referenceFile);
+
+			checkedPositions = null;
+			checkedPositions = new int[referenceFile.dataOffsets[2]
+					- referenceFile.dataOffsets[0]];
 
 			TimerEvent.EVENT_SEARCH_QUERIES.start();
+
+			QueriesAligner aligner = new QueriesAligner(queriesFile,
+					referenceIndex, results, matchCounts, checkedPositions);
+			QueriesAligner.resetSegmentCount();
+
 			try {
-				aligner.call();
-			} catch (Exception e) {
+				executor.invokeAll(KmerUtil.buildTasks(queriesFile, aligner,
+						ProgramParameters.numThreads * NUM_TASKS_PER_THREAD));
+			} catch (InterruptedException e) {
+				System.out.println("Interrupted error");
 			}
 			TimerEvent.EVENT_SEARCH_QUERIES.stop();
 
-			genomeFile.clearData();
+			referenceFile.clearData();
 		}
 
-		ElandOutput.processResults(results, queriesFile, genomeFiles,
-				parameters.maxMismatches, parameters.queryLength,
-				parameters.outputFileName);
+		executor.shutdown();
+
+		ElandOutput.processResults(results, queriesFile, referenceFiles);
 
 	}
 
-	private void indexQueriesSearch() throws SearchException {
-		List<InputFile> genomeFiles = new ArrayList();
-		ExecutorService executor = Executors
-				.newFixedThreadPool(parameters.numThreads);
+	private void indexQueriesSearch() {
+		List<InputFile> referenceFiles = new ArrayList();
 
 		InputFile queriesFile = loadQueriesFile();
 
 		KmerIndex queriesIndex = indexQueriesFile(queriesFile);
 
 		matchCounts = new byte[queriesFile.data.length
-				/ queriesFile.queryLength + 1];
+				/ ProgramParameters.queryLength + 1];
 
-		// queriesIndex.dumpKmers();
-		// System.out.println ("kmers = " +
-		// queriesIndex.getKmerPositionsMap().size());
+		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
+			InputFile referenceFile = loadReferenceFile(i);
 
-		for (int i = 0; i < parameters.genomeFileNames.size(); ++i) {
-			InputFile genomeFile = loadGenomeFile(i);
+			TimerEvent.EVENT_SEARCH_REFERENCE.start();
+			referenceFiles.add(referenceFile);
 
-			// System.out.println (new String(genomeFile.data, 3087459, 36));
-			// System.out.println (new String(genomeFile.data, 2979021 + 36 - 1,
-			// 36));
-			// System.out.println (new String(genomeFile.data, 6300366, 36));
+			ReferenceAligner.resetSegmentCount();
+			ReferenceAligner aligner = new ReferenceAligner(referenceFile,
+					queriesIndex, results, matchCounts);
 
-			// System.exit(0);
+			Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
+					referenceFile, aligner, ProgramParameters.numThreads
+							* NUM_TASKS_PER_THREAD);
 
-			TimerEvent.EVENT_SEARCH_GENOME.start();
-			genomeFiles.add(genomeFile);
+			try {
+				executor.invokeAll(tasks);
+			} catch (InterruptedException e) {
+				System.out.println("Interrupted error");
+			}
 
-			Collection<Callable<Object>> tasks = buildTasks(genomeFile,
+			referenceFile.clearData();
+			TimerEvent.EVENT_SEARCH_REFERENCE.stop();
+		}
+
+		executor.shutdown();
+
+		ElandOutput.processResults(results, queriesFile, referenceFiles);
+
+	}
+
+	private void indexBothSearch() {
+		List<InputFile> referenceFiles = new ArrayList();
+
+		InputFile queriesFile = loadQueriesFile();
+
+		KmerIndex queriesIndex = indexQueriesFile(queriesFile);
+
+		matchCounts = new byte[queriesFile.data.length
+				/ ProgramParameters.queryLength + 1];
+
+		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
+			InputFile referenceFile = loadReferenceFile(i);
+
+			KmerIndex referenceIndex = indexReferenceFile(referenceFile);
+
+			TimerEvent.EVENT_SEARCH_REFERENCE.start();
+			referenceFiles.add(referenceFile);
+
+			Collection<Callable<Object>> tasks = buildTasks(referenceIndex,
 					queriesIndex);
 
 			try {
@@ -208,105 +262,30 @@ public class Search {
 				System.out.println("Interrupted error");
 			}
 
-			genomeFile.clearData();
-			TimerEvent.EVENT_SEARCH_GENOME.stop();
+			referenceFile.clearData();
+			TimerEvent.EVENT_SEARCH_REFERENCE.stop();
 		}
 
 		executor.shutdown();
 
-		ElandOutput.processResults(results, queriesFile, genomeFiles,
-				parameters.maxMismatches, parameters.queryLength,
-				parameters.outputFileName);
+		ElandOutput.processResults(results, queriesFile, referenceFiles);
 
 	}
 
-	private void indexBothSearch() throws SearchException {
-		List<InputFile> genomeFiles = new ArrayList();
-		ExecutorService executor = Executors
-				.newFixedThreadPool(parameters.numThreads);
-
-		InputFile queriesFile = loadQueriesFile();
-
-		KmerIndex queriesIndex = indexQueriesFile(queriesFile);
-
-		matchCounts = new byte[queriesFile.data.length
-				/ queriesFile.queryLength + 1];
-
-		for (int i = 0; i < parameters.genomeFileNames.size(); ++i) {
-			InputFile genomeFile = loadGenomeFile(i);
-
-			KmerIndex genomeIndex = indexGenomeFile(genomeFile);
-
-			TimerEvent.EVENT_SEARCH_GENOME.start();
-			genomeFiles.add(genomeFile);
-
-			Collection<Callable<Object>> tasks = buildTasks(genomeIndex,
-					queriesIndex);
-
-			try {
-				executor.invokeAll(tasks);
-			} catch (InterruptedException e) {
-				System.out.println("Interrupted error");
-			}
-
-			genomeFile.clearData();
-			TimerEvent.EVENT_SEARCH_GENOME.stop();
-		}
-
-		executor.shutdown();
-
-		ElandOutput.processResults(results, queriesFile, genomeFiles,
-				parameters.maxMismatches, parameters.queryLength,
-				parameters.outputFileName);
-
-	}
-
-	private Collection<Callable<Object>> buildTasks(KmerIndex genomeIndex,
+	private Collection<Callable<Object>> buildTasks(KmerIndex referenceIndex,
 			KmerIndex queriesIndex) {
-		Long2ObjectMap<KmerPositionList> index = genomeIndex
+		Long2ObjectMap<KmerPositionList> index = referenceIndex
 				.getKmerPositionsMap();
 
 		return null;
 	}
 
-	private Collection<Callable<Object>> buildTasks(InputFile genomeFile,
-			KmerIndex queriesIndex) {
-		Collection<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
-
-		int totalLength = genomeFile.dataOffsets[genomeFile.dataOffsets.length - 1]
-				- genomeFile.dataOffsets[0];
-		int numSegments = parameters.numThreads * 50;
-		// int numSegments = 1;
-
-		System.out.println("TOTAL DATA: start = " + genomeFile.dataOffsets[0]
-				+ ", end = "
-				+ genomeFile.dataOffsets[genomeFile.dataOffsets.length - 1]);
-
-		GenomeAligner.resetSegmentCount();
-
-		for (int i = 0; i < numSegments; ++i) {
-			int start = (int) ((long) genomeFile.dataOffsets[0] + (((long) totalLength * i) / numSegments));
-			int end = (int) ((long) genomeFile.dataOffsets[0] + (((long) totalLength * (i + 1)) / numSegments));
-			if (i > 0) {
-				start = start - kmerLength + 1;
-			}
-			System.out.println("start = " + start + ", end = " + end);
-
-			GenomeAligner genomeAligner = new GenomeAligner(genomeFile,
-					queriesIndex, start, end, parameters, results, matchCounts);
-			tasks.add(genomeAligner);
-
-		}
-		return tasks;
-	}
-
 	public static void main(String[] args) {
 		try {
 
-			ProgramParameters parameters = new ProgramParameters();
-			if (parameters.loadFromCommandLine(args)) {
+			if (ProgramParameters.loadFromCommandLine(args)) {
 				Search search = new Search();
-				search.search(parameters);
+				search.search();
 			}
 
 		} catch (Throwable e) {
@@ -315,37 +294,37 @@ public class Search {
 		}
 	}
 
-	private void generateReads() throws SearchException {
-		InputFile genomeFile = loadGenomeFile(0);
+	private void generateReads() {
+		InputFile referenceFile = loadReferenceFile(0);
 		PrintStream ps;
 		try {
 			ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(
-					parameters.outputFileName)));
+					ProgramParameters.outputFileName)));
 		} catch (FileNotFoundException e) {
 			throw new SearchException(e);
 		}
 
 		Random random = new Random();
-		int genomeLength = genomeFile.dataOffsets[1]
-				- genomeFile.dataOffsets[0] - parameters.queryLength;
+		int referenceLength = referenceFile.dataOffsets[1]
+				- referenceFile.dataOffsets[0] - ProgramParameters.queryLength;
 		int minGap = 300;
 		int maxGap = 900;
 
 		for (int i = 0; i < 10000000; ++i) {
 			int gap = random.nextInt(maxGap - minGap) + minGap;
-			int firstPos = random.nextInt(genomeLength - maxGap
-					- parameters.queryLength)
-					+ parameters.queryLength;
+			int firstPos = random.nextInt(referenceLength - maxGap
+					- ProgramParameters.queryLength)
+					+ ProgramParameters.queryLength;
 			if (random.nextBoolean()) {
-				firstPos += genomeFile.dataOffsets[1];
+				firstPos += referenceFile.dataOffsets[1];
 			}
 			int secondPos = firstPos + gap;
 
-			ps.println(mutate(new String(genomeFile.data, firstPos,
-					parameters.queryLength))
+			ps.println(mutate(new String(referenceFile.data, firstPos,
+					ProgramParameters.queryLength))
 					+ "\t"
-					+ mutate(new String(genomeFile.data, secondPos,
-							parameters.queryLength)));
+					+ mutate(new String(referenceFile.data, secondPos,
+							ProgramParameters.queryLength)));
 		}
 
 		ps.close();

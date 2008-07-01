@@ -1,6 +1,9 @@
 /*
  * $Log: QueriesAligner.java,v $
- * Revision 1.2  2008/06/10 13:48:46  hugh
+ * Revision 1.3  2008/07/01 15:59:21  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-06-10 13:48:46  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -10,71 +13,40 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.IntAVLTreeSet;
-import it.unimi.dsi.fastutil.ints.IntIterator;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntRBTreeSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
-import java.util.Set;
 import java.util.concurrent.Callable;
 
-public class QueriesAligner extends Aligner implements KmerProcessor,
-		Callable<Object> {
+public class QueriesAligner extends Aligner implements KmerProcessor {
 
-	private final KmerIndex genomeIndex;
-	private final int startPos;
-	private final int endPos;
+	private final KmerIndex referenceIndex;
+	private  int startPos;
+	private  int endPos;
 	private static int segmentCount = 0;
-	private static int locationCount = 0;
-	
-    private static IntSet locations = new IntOpenHashSet();
-		
-	public QueriesAligner(InputFile queriesFile, KmerIndex genomeIndex,
-			int startPos, int endPos, ProgramParameters parameters,
-			ObjectSet<Match> results, byte[] matchCounts, byte[] checkedPositions) {
-		super(genomeIndex.file.data, queriesFile.data, queriesFile.queryLength,
-				parameters.minMatchLength, parameters.maxMismatches,
-				genomeIndex.file.fileNum, results, matchCounts);
-		this.genomeIndex = genomeIndex;
-		this.startPos = startPos;
-		this.endPos = endPos;
+
+	public QueriesAligner(InputFile queriesFile, KmerIndex referenceIndex,
+			ObjectSet<Match> results, byte[] matchCounts, int[] checkedPositions) {
+		super(referenceIndex.file.data, queriesFile.data, 
+				referenceIndex.file.fileNum, results, matchCounts,
+				checkedPositions);
+		this.referenceIndex = referenceIndex;
 	}
 
 	public void processKmer(long kmer, int queryPosition) {
-		KmerPositionList genomePositions = genomeIndex.getKmerPositions(kmer);
-		
-		int queryOffset = queryPosition % queryLength;
-		
-		if (queryOffset == 0) {
-//			System.out.println ("locationCount = " + locationCount + ", locations.size() = " + locations.size());
-			for (IntIterator iterator = locations.iterator(); iterator.hasNext();) {
-				doAlignment(iterator.nextInt(), queryPosition - queryLength);
-			}
-			locations.clear();
-//			locationCount = 0;
-		} 
-		
-		addLocations(genomePositions, queryOffset);
-		
-//		for (int i = 0; i < genomePositions.positionCount; ++i) {
-//			doAlignment(genomePositions.positions[i], queryPosition);
-//		}
-	}
+		KmerPositionList referencePositions = referenceIndex
+				.getKmerPositions(kmer);
 
-	private void addLocations(KmerPositionList genomePositions, int queryOffset) {
-		for (int i = 0; i < genomePositions.positionCount; ++i) {
-//			locationCount += genomePositions.positionCount;
-			locations.add(genomePositions.positions[i] - queryOffset);
+		for (int i = 0; i < referencePositions.positionCount; ++i) {
+			doAlignment(referencePositions.positions[i], queryPosition);
 		}
 	}
 
 	public Object call() throws Exception {
 		try {
 			KmerUtil.generateQueryKmers(queries, startPos, endPos,
-					genomeIndex.kmerLength, 1, queryLength, "Searching queries", this);
+					ProgramParameters.kmerLength,
+					ProgramParameters.queryKmerInterval, ProgramParameters.queryLength,
+					"Searching queries", this);
 			++segmentCount;
 			System.out.println("Completed segment " + segmentCount);
 
@@ -92,5 +64,25 @@ public class QueriesAligner extends Aligner implements KmerProcessor,
 
 	public static void resetSegmentCount() {
 		segmentCount = 0;
+	}
+	public Object clone() throws CloneNotSupportedException {
+		return super.clone();
+	}
+	
+	public int getEnd() {
+		return endPos;
+	}
+
+	public int getStart() {
+		return startPos;
+	}
+
+	public void setEnd(int end) {
+		this.endPos = end;
+		
+	}
+
+	public void setStart(int start) {
+		this.startPos = start;
 	}
 }

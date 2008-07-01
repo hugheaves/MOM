@@ -1,6 +1,9 @@
 /*
  * $Log: Match.java,v $
- * Revision 1.1  2008/05/08 18:50:08  hugh
+ * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-05-08 18:50:08  hugh
  * Updated.
  *
  */
@@ -8,18 +11,18 @@
 package edu.vcu.sysbio;
 
 public 	class Match {
-	int genomeFile;
-	int genomePosition;
+	int referenceFile;
+	int referencePosition;
 	int queryPosition;
 	int startOffset;
 	int endOffset;
 	int numMismatches;
 	byte[] mismatches;
 
-	public Match(int genomeFile, int genomePosition, int queryPosition,
+	public Match(int referenceFile, int referencePosition, int queryPosition,
 			int startOffset, int endOffset, int numMismatches, byte[] mismatches) {
-		this.genomeFile = genomeFile;
-		this.genomePosition = genomePosition;
+		this.referenceFile = referenceFile;
+		this.referencePosition = referencePosition;
 		this.queryPosition = queryPosition;
 		this.startOffset = startOffset;
 		this.endOffset = endOffset;
@@ -28,13 +31,13 @@ public 	class Match {
 	}
 
 	public int hashCode() {
-		return genomePosition ^ queryPosition ^ genomeFile;
+		return referencePosition ^ queryPosition ^ referenceFile;
 	}
 
 	public boolean equals(Object o) {
-		if (((Match) o).genomePosition == genomePosition
+		if (((Match) o).referencePosition == referencePosition
 				&& ((Match) o).queryPosition == queryPosition
-				&& ((Match) o).genomeFile == genomeFile)
+				&& ((Match) o).referenceFile == referenceFile)
 			return true;
 		return false;
 	}
