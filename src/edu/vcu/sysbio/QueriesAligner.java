@@ -1,6 +1,9 @@
 /*
  * $Log: QueriesAligner.java,v $
- * Revision 1.3  2008/07/01 15:59:21  hugh
+ * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.3  2008-07-01 15:59:21  hugh
  * Updated.
  *
  * Revision 1.2  2008-06-10 13:48:46  hugh
@@ -25,10 +28,10 @@ public class QueriesAligner extends Aligner implements KmerProcessor {
 	private static int segmentCount = 0;
 
 	public QueriesAligner(InputFile queriesFile, KmerIndex referenceIndex,
-			ObjectSet<Match> results, byte[] matchCounts, int[] checkedPositions) {
+			Match[] results, int[] checkedPositions) {
 		super(referenceIndex.file.data, queriesFile.data, 
-				referenceIndex.file.fileNum, results, matchCounts,
-				checkedPositions);
+				referenceIndex.file.fileNum, results, 
+				checkedPositions, null);
 		this.referenceIndex = referenceIndex;
 	}
 

@@ -1,6 +1,9 @@
 /*
  * $Log: ReferenceAligner.java,v $
- * Revision 1.1  2008/07/01 15:59:21  hugh
+ * Revision 1.2  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.1  2008-07-01 15:59:21  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -10,6 +13,8 @@
 
 package edu.vcu.sysbio;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 public class ReferenceAligner extends Aligner implements KmerProcessor {
@@ -20,9 +25,9 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
 	private static int segmentCount = 0;
 
 	public ReferenceAligner(InputFile referenceFile, KmerIndex queriesIndex,
-			ObjectSet<Match> results, byte[] matchCounts) {
+			Match[] results, LongSet hits) {
 		super(referenceFile.data, queriesIndex.file.data,
-				referenceFile.fileNum, results, matchCounts, null);
+				referenceFile.fileNum, results, null, hits);
 		this.queriesIndex = queriesIndex;
 	}
 

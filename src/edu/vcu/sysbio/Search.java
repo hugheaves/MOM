@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: Search.java,v $
- * Revision 1.3  2008/07/01 15:59:22  hugh
+ * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.3  2008-07-01 15:59:22  hugh
  * Updated.
  *
  * Revision 1.2  2008-06-10 13:48:48  hugh
@@ -39,6 +42,9 @@
 package edu.vcu.sysbio;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.LongSets;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import it.unimi.dsi.fastutil.objects.ObjectSets;
@@ -61,9 +67,7 @@ public class Search {
 
 	private static Logger log = Logger.getLogger(Search.class.toString());
 
-	private ObjectSet<Match> results = new ObjectOpenHashSet<Match>();
-
-	private byte[] matchCounts = null;
+	private Match[] results;
 
 	private ExecutorService executor;
 
@@ -79,10 +83,6 @@ public class Search {
 		System.out.println("Number of threads is "
 				+ ProgramParameters.numThreads + ".");
 		System.out.flush();
-
-		if (ProgramParameters.numThreads > 1) {
-			results = ObjectSets.synchronize(results);
-		}
 
 		executor = Executors.newFixedThreadPool(ProgramParameters.numThreads);
 
@@ -160,7 +160,7 @@ public class Search {
 
 		InputFile queriesFile = loadQueriesFile();
 
-		matchCounts = new byte[queriesFile.data.length
+		results = new Match[queriesFile.data.length
 				/ ProgramParameters.queryLength + 1];
 
 		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
@@ -175,7 +175,7 @@ public class Search {
 			TimerEvent.EVENT_SEARCH_QUERIES.start();
 
 			QueriesAligner aligner = new QueriesAligner(queriesFile,
-					referenceIndex, results, matchCounts, checkedPositions);
+					referenceIndex, results, checkedPositions);
 			QueriesAligner.resetSegmentCount();
 
 			try {
@@ -202,8 +202,9 @@ public class Search {
 
 		KmerIndex queriesIndex = indexQueriesFile(queriesFile);
 
-		matchCounts = new byte[queriesFile.data.length
-				/ ProgramParameters.queryLength + 1];
+		results = new Match[queriesFile.data.length
+		    				/ ProgramParameters.queryLength + 1];
+		LongSet hits =  LongSets.synchronize(new LongOpenHashSet());
 
 		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
 			InputFile referenceFile = loadReferenceFile(i);
@@ -213,7 +214,7 @@ public class Search {
 
 			ReferenceAligner.resetSegmentCount();
 			ReferenceAligner aligner = new ReferenceAligner(referenceFile,
-					queriesIndex, results, matchCounts);
+					queriesIndex, results, hits);
 
 			Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
 					referenceFile, aligner, ProgramParameters.numThreads
@@ -226,6 +227,7 @@ public class Search {
 			}
 
 			referenceFile.clearData();
+			hits.clear();
 			TimerEvent.EVENT_SEARCH_REFERENCE.stop();
 		}
 
@@ -242,8 +244,8 @@ public class Search {
 
 		KmerIndex queriesIndex = indexQueriesFile(queriesFile);
 
-		matchCounts = new byte[queriesFile.data.length
-				/ ProgramParameters.queryLength + 1];
+		results = new Match[queriesFile.data.length
+		    				/ ProgramParameters.queryLength + 1];
 
 		for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
 			InputFile referenceFile = loadReferenceFile(i);

@@ -2,7 +2,10 @@
  * Copyright (c) 2007 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ElandOutput.java,v $
- * Revision 1.2  2008/07/01 15:59:21  hugh
+ * Revision 1.3  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-07-01 15:59:21  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -27,31 +30,31 @@ import java.util.List;
 import java.util.Set;
 
 public class ElandOutput {
-	public static void processResults(ObjectSet<Match> results,
-			InputFile queriesFile, List<InputFile> referenceFiles) {
+	public static void processResults(Match[] results, InputFile queriesFile,
+			List<InputFile> referenceFiles) {
 
 		// index all results by query location
 		TimerEvent.EVENT_PROCESS_RESULTS.start();
-		Int2ObjectMap<ObjectSet<Match>> resultsByQueryPos = new Int2ObjectOpenHashMap<ObjectSet<Match>>();
-		for (Iterator<Match> i = results.iterator(); i.hasNext();) {
-			Match currentMatch = i.next();
-			ObjectSet<Match> matches = resultsByQueryPos
-					.get(currentMatch.queryPosition);
-			if (matches == null) {
-				matches = new ObjectArraySet();
-				resultsByQueryPos.put(currentMatch.queryPosition, matches);
-			}
-			matches.add(currentMatch);
-		}
+		// Int2ObjectMap<ObjectSet<Match>> resultsByQueryPos = new
+		// Int2ObjectOpenHashMap<ObjectSet<Match>>();
+		// for (Iterator<Match> i = results.iterator(); i.hasNext();) {
+		// Match currentMatch = i.next();
+		// ObjectSet<Match> matches = resultsByQueryPos
+		// .get(currentMatch.queryPosition);
+		// if (matches == null) {
+		// matches = new ObjectArraySet();
+		// resultsByQueryPos.put(currentMatch.queryPosition, matches);
+		// }
+		// matches.add(currentMatch);
+		// }
 		TimerEvent.EVENT_PROCESS_RESULTS.stop();
 
 		TimerEvent.EVENT_WRITE_OUTPUT.start();
-		outputResults(resultsByQueryPos, queriesFile, referenceFiles);
+		outputResults(results, queriesFile, referenceFiles);
 		TimerEvent.EVENT_WRITE_OUTPUT.stop();
 	}
 
-	private static void outputResults(
-			Int2ObjectMap<ObjectSet<Match>> resultsByQueryPos,
+	private static void outputResults(Match[] resultsByQueryPos,
 			InputFile queriesFile, List<InputFile> referenceFiles) {
 		StringBuilder outputLine = new StringBuilder();
 
@@ -63,17 +66,19 @@ public class ElandOutput {
 			char charBuf[] = new char[1024];
 
 			int totalMatches = 0;
+			int totalUniqueMatches = 0;
+			long totalBases = 0;
+
 			int matchCounts[] = new int[ProgramParameters.maxMismatches <= 2 ? 3
 					: ProgramParameters.maxMismatches + 1];
 
 			for (int queryPosition = queriesFile.dataOffsets[0]
 					+ ProgramParameters.queryLength; queryPosition < queriesFile.dataOffsets[1]; queryPosition += ProgramParameters.queryLength) {
-				
+
 				outputLine.setLength(0);
 
 				int queryNum = queryPosition / ProgramParameters.queryLength;
-				Set<Match> matches = resultsByQueryPos.get(queryPosition);
-				Match match = null;
+				Match match = resultsByQueryPos[queryNum];
 
 				if (queriesFile.headers.length == 0) {
 					outputLine.append(queriesFile.fileName + ":" + queryNum);
@@ -87,26 +92,39 @@ public class ElandOutput {
 
 				outputLine.append("\t");
 
-				if (matches == null || matches.size() > 1) {
+				if (match == null) {
+					// TODO temporary addition of stats columns
+//					outputLine.append("0\t0\t0\t0\t0\t");
+
 					outputLine.append(bytesToChars(queriesFile.data, charBuf,
 							queryPosition, ProgramParameters.queryLength), 0,
 							ProgramParameters.queryLength);
 					outputLine.append("\t");
-				}
-
-				if (matches == null) {
 					outputLine.append("NM");
 				} else {
+					// TODO temporary addition of stats columns
+//					outputLine.append(match.startOffset);
+//					outputLine.append("\t");
+//					outputLine.append(match.startOffset + match.length);
+//					outputLine.append("\t");		
+//					outputLine.append(match.length);
+//					outputLine.append("\t");
+//					outputLine.append(match.numMismatches);
+//					outputLine.append("\t");
+//					outputLine.append(match.matchCount);
+//					outputLine.append("\t");
+
 					++totalMatches;
 
 					Arrays.fill(matchCounts, 0);
-					for (Iterator<Match> i = matches.iterator(); i.hasNext();) {
-						match = i.next();
-						matchCounts[match.numMismatches]++;
-					}
 
-					if (matches.size() == 1) {
-						int len = match.endOffset - match.startOffset + 1;
+					matchCounts[match.numMismatches] = match.matchCount;
+
+					if (match.matchCount == 1) {
+						++totalUniqueMatches;
+						totalBases += match.length;
+
+						int len = match.length;
 						outputLine
 								.append(
 										bytesToChars(queriesFile.data, charBuf,
@@ -114,10 +132,17 @@ public class ElandOutput {
 														+ match.startOffset,
 												len), 0, len);
 						outputLine.append("\t");
+
 						outputLine.append("U");
 						outputLine.append(match.numMismatches);
 						outputLine.append("\t");
 					} else {
+						outputLine.append(bytesToChars(queriesFile.data,
+								charBuf, queryPosition,
+								ProgramParameters.queryLength), 0,
+								ProgramParameters.queryLength);
+						outputLine.append("\t");
+
 						for (int i = ProgramParameters.maxMismatches; i >= 0; --i) {
 							if (matchCounts[i] > 0) {
 								outputLine.append("R");
@@ -133,7 +158,7 @@ public class ElandOutput {
 						outputLine.append("\t");
 					}
 
-					if (matches.size() == 1) {
+					if (match.matchCount == 1) {
 						int forwardPosition = 0;
 						boolean reverse = false;
 						InputFile referenceFile = referenceFiles
@@ -197,7 +222,12 @@ public class ElandOutput {
 			}
 
 			System.out.println("Total matches = " + totalMatches);
+			System.out.println("Total unique matches = " + totalUniqueMatches);
+			System.out.println("Total bases from unique matches = "
+					+ totalBases);
 
+			ps.flush();
+			ps.close();
 		} catch (IOException e) {
 			throw new SearchException(e);
 		}

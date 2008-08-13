@@ -1,6 +1,9 @@
 /*
  * $Log: KmerUtil.java,v $
- * Revision 1.2  2008/07/01 15:59:21  hugh
+ * Revision 1.3  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-07-01 15:59:21  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -30,7 +33,7 @@ import java.util.logging.Logger;
  * 
  * @author Hugh
  * @since Feb 19, 2008
- * @version $Revision: 1.2 $
+ * @version $Revision: 1.3 $
  * 
  */
 public class KmerUtil {
@@ -91,7 +94,7 @@ public class KmerUtil {
 			return 1;
 		} else if (b == 'C') {
 			return 2;
-		} else if (b == 'T') {
+		} else if (b == 'T' || b == 'U') {
 			return 3;
 		}
 		return 0;

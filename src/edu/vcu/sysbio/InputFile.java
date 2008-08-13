@@ -1,6 +1,9 @@
 /*
  * $Log: InputFile.java,v $
- * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Revision 1.3  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-07-01 15:59:22  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -62,7 +65,7 @@ public class InputFile {
 
 			InputStream is = new BufferedInputStream(new FileInputStream(file));
 
-//			InputStream is = new FileInputStream(file);
+			// InputStream is = new FileInputStream(file);
 
 			byte ch = 0;
 
@@ -84,10 +87,12 @@ public class InputFile {
 
 				if (!inHeader) {
 					if (ch == 'A' || ch == 'G' || ch == 'C' || ch == 'T'
+							|| ch == 'R' || ch == 'Y' || ch == 'K' || ch == 'M'
 							|| ch == WILDCARD_CHAR) {
 						++dataPos;
 					} else if (ch == 13 || ch == 10) {
-						if (!referenceFile && dataPos % ProgramParameters.queryLength != 0) {
+						if (!referenceFile
+								&& dataPos % ProgramParameters.queryLength != 0) {
 							throw new SearchException(
 									"Invalid length query in file  ["
 											+ fileName + "] at byte "
@@ -124,10 +129,12 @@ public class InputFile {
 
 			// allocate space for the data
 			if (reverseData) {
-				data = new byte[dataPos * 2 + ((numSegments + 1) * ProgramParameters.queryLength)];
+				data = new byte[dataPos * 2
+						+ ((numSegments + 1) * ProgramParameters.queryLength)];
 			} else {
 
-				data = new byte[dataPos + ((numSegments + 1) * ProgramParameters.queryLength)];
+				data = new byte[dataPos
+						+ ((numSegments + 1) * ProgramParameters.queryLength)];
 
 			}
 			dataOffsets = new int[numSegments + 1];
@@ -142,7 +149,8 @@ public class InputFile {
 			bytesProcessed = 0;
 			inHeader = false;
 
-			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength,
+					NOMATCH_CHAR);
 			dataPos += ProgramParameters.queryLength;
 
 			System.out.println("Reading file " + fileName + ", second pass");
@@ -158,6 +166,7 @@ public class InputFile {
 
 				if (!inHeader) {
 					if (ch == 'A' || ch == 'G' || ch == 'C' || ch == 'T'
+							|| ch == 'R' || ch == 'Y' || ch == 'K' || ch == 'M'
 							|| ch == WILDCARD_CHAR) {
 						data[dataPos++] = ch;
 					} else if (ch == 13 || ch == 10) {
@@ -166,11 +175,13 @@ public class InputFile {
 						inHeader = true;
 						if (referenceFile && numHeaders > 0) {
 							dataOffsets[++numSegments] = dataPos;
-							Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength,
+							Arrays.fill(data, dataPos, dataPos
+									+ ProgramParameters.queryLength,
 									NOMATCH_CHAR);
 							dataPos += ProgramParameters.queryLength;
 							if (reverseData) {
-								dataPos = reverseReference(numSegments++, dataPos);
+								dataPos = reverseReference(numSegments++,
+										dataPos);
 
 							}
 						}
@@ -188,7 +199,8 @@ public class InputFile {
 			is.close();
 
 			dataOffsets[++numSegments] = dataPos;
-			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+			Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength,
+					NOMATCH_CHAR);
 			dataPos += ProgramParameters.queryLength;
 			if (reverseData) {
 				dataPos = reverseReference(numSegments++, dataPos);
@@ -225,7 +237,8 @@ public class InputFile {
 		}
 
 		dataOffsets[numSegments + 1] = dataPos;
-		Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength, NOMATCH_CHAR);
+		Arrays.fill(data, dataPos, dataPos + ProgramParameters.queryLength,
+				NOMATCH_CHAR);
 		dataPos += ProgramParameters.queryLength;
 
 		return dataPos;

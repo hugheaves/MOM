@@ -1,6 +1,9 @@
 /*
  * $Log: Match.java,v $
- * Revision 1.2  2008/07/01 15:59:22  hugh
+ * Revision 1.3  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.2  2008-07-01 15:59:22  hugh
  * Updated.
  *
  * Revision 1.1  2008-05-08 18:50:08  hugh
@@ -10,24 +13,30 @@
 
 package edu.vcu.sysbio;
 
-public 	class Match {
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+
+public class Match {
 	int referenceFile;
 	int referencePosition;
 	int queryPosition;
 	int startOffset;
-	int endOffset;
 	int numMismatches;
 	byte[] mismatches;
+	int length;
+    int matchCount;
+    
+	public Match() {
+	}
 
-	public Match(int referenceFile, int referencePosition, int queryPosition,
-			int startOffset, int endOffset, int numMismatches, byte[] mismatches) {
+	public void setValues(int referenceFile, int referencePosition,
+			int queryPosition, int startOffset, int length, int numMismatches) {
 		this.referenceFile = referenceFile;
 		this.referencePosition = referencePosition;
 		this.queryPosition = queryPosition;
 		this.startOffset = startOffset;
-		this.endOffset = endOffset;
+		this.length = length;
 		this.numMismatches = numMismatches;
-		this.mismatches = mismatches;
+		this.matchCount = 1;
 	}
 
 	public int hashCode() {

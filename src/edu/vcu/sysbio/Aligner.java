@@ -1,6 +1,9 @@
 /*
  * $Log: Aligner.java,v $
- * Revision 1.3  2008/07/01 15:59:22  hugh
+ * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.3  2008-07-01 15:59:22  hugh
  * Updated.
  *
  * Revision 1.2  2008-06-25 19:05:56  hugh
@@ -13,7 +16,7 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.objects.ObjectSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 
 public class Aligner {
 	private int mismatchOffsets[];
@@ -21,14 +24,14 @@ public class Aligner {
 	private final int maxMismatches;
 	protected final byte[] reference;
 	protected final byte[] queries;
-	private final byte[] matchCounts;
 	private final int fileNum;
-	private final ObjectSet<Match> results;
+	private final Match[] results;
 	private final int[] alreadyCompared;
 	private final int maxTotalMismatches;
-	
+	private final LongSet hits;
+
 	public Aligner(byte[] reference, byte[] queries, int fileNum,
-			ObjectSet<Match> results, byte[] matchCounts, int[] alreadyCompared) {
+			Match[] results, int[] alreadyCompared, LongSet hits) {
 		this.mismatchOffsets = new int[ProgramParameters.queryLength];
 		// this.queryLength = ProgramParameters.queryLength;
 		this.maxMismatches = ProgramParameters.maxMismatches;
@@ -36,11 +39,11 @@ public class Aligner {
 		this.queries = queries;
 		this.fileNum = fileNum;
 		this.results = results;
-		this.matchCounts = matchCounts;
 		this.alreadyCompared = alreadyCompared;
 		this.maxTotalMismatches = ProgramParameters.queryLength
-		- ProgramParameters.minMatchLength
-		+ ProgramParameters.maxMismatches;
+				- ProgramParameters.minMatchLength
+				+ ProgramParameters.maxMismatches;
+		this.hits = hits;
 	}
 
 	/**
@@ -54,8 +57,8 @@ public class Aligner {
 	public final void doAlignment(int referencePosition, int queryPosition) {
 		final int queryNum = queryPosition / ProgramParameters.queryLength;
 
-		if ((ProgramParameters.maxMatchesPerQuery != -1)
-				&& (matchCounts[queryNum] >= ProgramParameters.maxMatchesPerQuery)) {
+		if ((ProgramParameters.maxMatchesPerQuery != -1 && results[queryNum] != null)
+				&& results[queryNum].matchCount >= ProgramParameters.maxMatchesPerQuery) {
 			return;
 		}
 
@@ -101,8 +104,8 @@ public class Aligner {
 				if (currentNumMismatches > maxMismatches) {
 					// if we're "maxed out" on mismatches, we "eat" a mismatch
 					// from the beginning
-					startPos = mismatchOffsets[totalMismatches
-							- maxMismatches - 1] + 1;
+					startPos = mismatchOffsets[totalMismatches - maxMismatches
+							- 1] + 1;
 					--currentNumMismatches;
 				}
 			}
@@ -122,29 +125,52 @@ public class Aligner {
 		}
 
 		if (longestMatchLength >= ProgramParameters.minMatchLength) {
-			Match match = new Match(fileNum, referencePosition + compareOffset,
-					queryPosition + compareOffset, longestMatchPosition
-							- compareOffset, longestMatchPosition
-							- compareOffset + longestMatchLength - 1,
-					longestMatchMismatches, null);
+			Match match = results[queryNum];
 
-			if (results.add(match)) {
-				++matchCounts[queryPosition / ProgramParameters.queryLength];
-				if (longestMatchMismatches > 0) {
-
-					byte[] mismatches = new byte[longestMatchMismatches * 2];
-					int j = 0;
-					for (int i = 0; i < longestMatchMismatches; ++i) {
-						int offset = mismatchOffsets[longestMatchMismatchesOffset
-								- longestMatchMismatches + i];
-						mismatches[j++] = (byte) (offset - compareOffset + 1);
-						mismatches[j++] = reference[referencePosition + offset];
+			if (match == null) {
+				synchronized (results) {
+					if (results[queryNum] == null) {
+						match = results[queryNum] = new Match();
+					} else {
+						match = results[queryNum];
 					}
-
-					match.mismatches = mismatches;
 				}
 			}
 
+			synchronized (match) {
+				if (longestMatchLength > match.length
+						|| longestMatchLength == match.length
+						&& longestMatchMismatches < match.numMismatches) {
+					match.setValues(fileNum, referencePosition + compareOffset,
+							queryPosition + compareOffset, longestMatchPosition
+									- compareOffset, longestMatchLength,
+							longestMatchMismatches);
+
+					if (longestMatchMismatches > 0) {
+						if (match.mismatches == null) {
+							match.mismatches = new byte[ProgramParameters.maxMismatches * 2];
+						}
+						int j = 0;
+						for (int i = 0; i < longestMatchMismatches; ++i) {
+							int offset = mismatchOffsets[longestMatchMismatchesOffset
+									- longestMatchMismatches + i];
+							match.mismatches[j++] = (byte) (offset
+									- compareOffset + 1);
+							match.mismatches[j++] = reference[referencePosition
+									+ offset];
+						}
+					}
+					long hit = ((long) referencePosition + (long) compareOffset) << 32;
+					hit += queryPosition + compareOffset;
+					hits.add(hit);
+				} else if (longestMatchLength == match.length && longestMatchMismatches == match.numMismatches) {
+					long hit = ((long) referencePosition + (long) compareOffset) << 32;
+					hit += queryPosition + compareOffset;
+					if (hits.add(hit)) {
+						++match.matchCount;
+					}
+				}
+			}
 		}
 	}
 

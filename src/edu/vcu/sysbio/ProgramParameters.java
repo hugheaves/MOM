@@ -2,7 +2,10 @@
  * Copyright (c) 2007 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ProgramParameters.java,v $
- * Revision 1.3  2008/07/01 15:59:21  hugh
+ * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Updated.
+ *
+ * Revision 1.3  2008-07-01 15:59:21  hugh
  * Updated.
  *
  * Revision 1.2  2008-06-10 13:48:48  hugh
@@ -34,11 +37,11 @@ public class ProgramParameters {
 	public static final String PARAM_NUM_THREADS = "numThreads";
 	public static final String PARAM_OUTPUT_FILE = "output";
 	public static final String PARAM_QUERIES_FILE = "query";
-	public static final String PARAM_REFERENCE_FILE = "genome";
+	public static final String PARAM_REFERENCE_FILE = "reference";
 	public static final String PARAM_SEARCH_METHOD = "searchMethod";
-	public static final String PARAM_KMER_LENGTH = "kmerLength";
-	public static final String PARAM_REFERENCE_KMER_INTERVAL = "referenceKmerInterval";
-	public static final String PARAM_QUERY_KMER_INTERVAL = "queryKmerInterval";
+	public static final String PARAM_KMER_LENGTH = "seedLength";
+	public static final String PARAM_REFERENCE_KMER_INTERVAL = "referenceSeedInterval";
+	public static final String PARAM_QUERY_KMER_INTERVAL = "querySeedInterval";
 	public static final String PARAM_MAX_MATCHES_PER_QUERY = "maxMatchesPerQuery";
 
 	private static HashMap<String, ParamMetaData> mainParameters = new HashMap();
@@ -73,7 +76,7 @@ public class ProgramParameters {
 				PARAM_REFERENCE_KMER_INTERVAL, "reference kmer interval",
 				false, ParamMetaData.Type.INTEGER));
 		mainParameters.put(PARAM_KMER_LENGTH, new ParamMetaData(
-				PARAM_KMER_LENGTH, "kmer length", false,
+				PARAM_KMER_LENGTH, "seed length", false,
 				ParamMetaData.Type.INTEGER));
 		mainParameters.put(PARAM_MAX_MATCHES_PER_QUERY, new ParamMetaData(
 				PARAM_MAX_MATCHES_PER_QUERY, "max matches per query", false,
