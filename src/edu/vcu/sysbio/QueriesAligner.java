@@ -1,6 +1,9 @@
 /*
  * $Log: QueriesAligner.java,v $
- * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Revision 1.5  2008/09/27 17:08:38  hugh
+ * Updated.
+ *
+ * Revision 1.4  2008-08-13 19:08:46  hugh
  * Updated.
  *
  * Revision 1.3  2008-07-01 15:59:21  hugh
@@ -16,9 +19,6 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.objects.ObjectSet;
-
-import java.util.concurrent.Callable;
 
 public class QueriesAligner extends Aligner implements KmerProcessor {
 
@@ -56,11 +56,11 @@ public class QueriesAligner extends Aligner implements KmerProcessor {
 		} catch (Exception e) {
 			System.out.println("Unexpected Exception in QueriesAligner:\n");
 			e.printStackTrace(System.out);
-			throw e;
+			System.exit(1);
 		} catch (Error e) {
 			System.out.println("Unexpected Error in QueriesAligner:\n");
 			e.printStackTrace(System.out);
-			throw e;
+			System.exit(1);
 		}
 		return null;
 	}

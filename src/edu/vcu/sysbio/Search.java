@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: Search.java,v $
- * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Revision 1.5  2008/09/27 17:08:38  hugh
+ * Updated.
+ *
+ * Revision 1.4  2008-08-13 19:08:46  hugh
  * Updated.
  *
  * Revision 1.3  2008-07-01 15:59:22  hugh
@@ -45,9 +48,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.longs.LongSets;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
-import it.unimi.dsi.fastutil.objects.ObjectSets;
 
 import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
@@ -283,6 +283,7 @@ public class Search {
 	}
 
 	public static void main(String[] args) {
+		System.out.println ("Maximal Oligo Mapping Version 0.1 - PreRelease");
 		try {
 
 			if (ProgramParameters.loadFromCommandLine(args)) {

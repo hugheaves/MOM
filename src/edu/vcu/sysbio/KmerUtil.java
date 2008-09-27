@@ -1,6 +1,9 @@
 /*
  * $Log: KmerUtil.java,v $
- * Revision 1.3  2008/08/13 19:08:46  hugh
+ * Revision 1.4  2008/09/27 17:08:38  hugh
+ * Updated.
+ *
+ * Revision 1.3  2008-08-13 19:08:46  hugh
  * Updated.
  *
  * Revision 1.2  2008-07-01 15:59:21  hugh
@@ -33,7 +36,7 @@ import java.util.logging.Logger;
  * 
  * @author Hugh
  * @since Feb 19, 2008
- * @version $Revision: 1.3 $
+ * @version $Revision: 1.4 $
  * 
  */
 public class KmerUtil {
@@ -201,45 +204,47 @@ public class KmerUtil {
 	}
 
 	public static int calculateIndexSize(InputFile file) {
-		long maxKmers = 0;
-		long numKmers = 0;
-		long indexSize = 0;
-
-		long dataLength = file.dataOffsets[file.dataOffsets.length - 1]
-				- file.dataOffsets[0];
-
-		if (ProgramParameters.kmerLength <= 31) {
-			maxKmers = 4 << ((ProgramParameters.kmerLength - 1) * 2);
-		} else {
-			maxKmers = Long.MAX_VALUE;
-		}
-
-		if (file.referenceFile) {
-			numKmers = dataLength / ProgramParameters.referenceKmerInterval;
-		} else {
-			long kmersPerQuery = ProgramParameters.queryLength
-					/ ProgramParameters.queryKmerInterval;
-			if (ProgramParameters.queryLength
-					% ProgramParameters.queryKmerInterval != 0) {
-				++kmersPerQuery;
-			}
-			numKmers = (dataLength / ProgramParameters.queryLength)
-					* kmersPerQuery;
-		}
-
-		if (numKmers > maxKmers) {
-			indexSize = maxKmers;
-		} else {
-			indexSize = (numKmers / 2);
-		}
-
-		System.out.println("Using initial index size of " + indexSize + " for "
-				+ file.fileName);
-		if (indexSize > Integer.MAX_VALUE) {
-			return Integer.MAX_VALUE;
-		} else {
-			return (int) indexSize;
-		}
+//		long maxKmers = 0;
+//		long numKmers = 0;
+//		long indexSize = 0;
+//
+//		long dataLength = file.dataOffsets[file.dataOffsets.length - 1]
+//				- file.dataOffsets[0];
+//
+//		if (ProgramParameters.kmerLength <= 31) {
+//			maxKmers = 4 << ((ProgramParameters.kmerLength - 1) * 2);
+//		} else {
+//			maxKmers = Long.MAX_VALUE;
+//		}
+//
+//		if (file.referenceFile) {
+//			numKmers = dataLength / ProgramParameters.referenceKmerInterval;
+//		} else {
+//			long kmersPerQuery = ProgramParameters.queryLength
+//					/ ProgramParameters.queryKmerInterval;
+//			if (ProgramParameters.queryLength
+//					% ProgramParameters.queryKmerInterval != 0) {
+//				++kmersPerQuery;
+//			}
+//			numKmers = (dataLength / ProgramParameters.queryLength)
+//					* kmersPerQuery;
+//		}
+//
+//		if (numKmers > maxKmers) {
+//			indexSize = maxKmers;
+//		} else {
+//			indexSize = (numKmers / 2);
+//		}
+//
+//		System.out.println("Using initial index size of " + indexSize + " for "
+//				+ file.fileName);
+//		if (indexSize > Integer.MAX_VALUE) {
+//			return Integer.MAX_VALUE;
+//		} else {
+//			return (int) indexSize;
+//		}
+		
+		return 1;
 	}
 
 	public static Collection<Callable<Object>> buildTasks(InputFile file,
