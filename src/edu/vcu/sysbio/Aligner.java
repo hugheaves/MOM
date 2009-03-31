@@ -1,6 +1,9 @@
 /*
  * $Log: Aligner.java,v $
- * Revision 1.4  2008/08/13 19:08:46  hugh
+ * Revision 1.5  2009/03/31 15:47:28  hugh
+ * Updated for 0.2 release
+ *
+ * Revision 1.4  2008-08-13 19:08:46  hugh
  * Updated.
  *
  * Revision 1.3  2008-07-01 15:59:22  hugh
@@ -18,165 +21,126 @@ package edu.vcu.sysbio;
 
 import it.unimi.dsi.fastutil.longs.LongSet;
 
-public class Aligner {
-	private int mismatchOffsets[];
-	// protected final int queryLength;
-	private final int maxMismatches;
-	protected final byte[] reference;
-	protected final byte[] queries;
-	private final int fileNum;
-	private final Match[] results;
-	private final int[] alreadyCompared;
-	private final int maxTotalMismatches;
-	private final LongSet hits;
+/**
+ * Base class for all alignment functions. Provides basic alignment algorithm in
+ * doAlignment() method. Subclasses implement either query on genome index bases
+ * searches.
+ * 
+ * @author hugh
+ * 
+ */
+public abstract class Aligner {
+    protected int mismatchOffsets[];
+    protected final int maxMismatches;
+    protected final byte[] reference;
+    protected final byte[] queries;
+    protected final int fileNum;
+    protected final Match[] results;
+    protected final int maxTotalMismatches;
 
-	public Aligner(byte[] reference, byte[] queries, int fileNum,
-			Match[] results, int[] alreadyCompared, LongSet hits) {
-		this.mismatchOffsets = new int[ProgramParameters.queryLength];
-		// this.queryLength = ProgramParameters.queryLength;
-		this.maxMismatches = ProgramParameters.maxMismatches;
-		this.reference = reference;
-		this.queries = queries;
-		this.fileNum = fileNum;
-		this.results = results;
-		this.alreadyCompared = alreadyCompared;
-		this.maxTotalMismatches = ProgramParameters.queryLength
-				- ProgramParameters.minMatchLength
-				+ ProgramParameters.maxMismatches;
-		this.hits = hits;
-	}
+    public Aligner(byte[] reference, byte[] queries, int fileNum,
+            Match[] results) {
+        this.mismatchOffsets = new int[ProgramParameters.queryLength];
+        this.maxMismatches = ProgramParameters.maxMismatches;
+        this.reference = reference;
+        this.queries = queries;
+        this.fileNum = fileNum;
+        this.results = results;
+        this.maxTotalMismatches = ProgramParameters.queryLength
+                - ProgramParameters.minMatchLength
+                + ProgramParameters.maxMismatches;
+    }
 
-	/**
-	 * Find the longest matching substring between the reference and query with
-	 * "k" mismatches and "q" minimum match size
-	 * 
-	 * @param referencePosition
-	 * @param queryPosition
-	 * @param forwardDirection
-	 */
-	public final void doAlignment(int referencePosition, int queryPosition) {
-		final int queryNum = queryPosition / ProgramParameters.queryLength;
+    /**
+     * Find the longest matching substring between the reference and query with
+     * "k" mismatches and "q" minimum match size
+     * 
+     * @param referencePosition
+     * @param queryPosition
+     * @param forwardDirection
+     */
+    public final void doAlignment(int referencePosition, int queryPosition) {
+        final int queryNum = queryPosition / ProgramParameters.queryLength;
 
-		if ((ProgramParameters.maxMatchesPerQuery != -1 && results[queryNum] != null)
-				&& results[queryNum].matchCount >= ProgramParameters.maxMatchesPerQuery) {
-			return;
-		}
+        Match match = results[queryNum];
 
-		final int compareOffset = -(queryPosition % ProgramParameters.queryLength);
+        if (ProgramParameters.maxMatchesPerQuery != -1
+                && match != null
+                && match.mismatchData[match.numMismatches] >= ProgramParameters.maxMatchesPerQuery) {
+            return;
+        }
 
-		if (alreadyCompared != null) {
-			if (alreadyCompared[referencePosition + compareOffset] == queryNum) {
-				return;
-			} else {
-				alreadyCompared[referencePosition + compareOffset] = queryNum;
-			}
-		}
+        final int compareOffset = -(queryPosition % ProgramParameters.queryLength);
 
-		int startPos = compareOffset;
-		int endPos = compareOffset;
-		final int finalPos = compareOffset + ProgramParameters.queryLength;
+        int startPos = compareOffset;
+        int endPos = compareOffset;
+        final int finalPos = compareOffset + ProgramParameters.queryLength;
 
-		int longestMatchLength = 0;
-		int longestMatchPosition = startPos;
-		int longestMatchMismatches = 0;
-		int longestMatchMismatchesOffset = 0;
-		int currentNumMismatches = 0;
-		int totalMismatches = 0;
+        int longestMatchLength = 0;
+        int longestMatchPosition = startPos;
+        int longestMatchMismatches = 0;
+        int longestMatchMismatchesOffset = 0;
+        int currentNumMismatches = 0;
+        int totalMismatches = 0;
 
-		// "caterpillar" through the string to find the largest matching
-		// substring with k mismatches
-		while (endPos < finalPos) {
+        // "caterpillar" through the string to find the largest matching
+        // substring with k mismatches
+        while (endPos < finalPos) {
 
-			if (reference[referencePosition + endPos] != queries[queryPosition
-					+ endPos]) {
+            if (reference[referencePosition + endPos] != queries[queryPosition
+                    + endPos]) {
 
-				mismatchOffsets[totalMismatches++] = endPos;
+                mismatchOffsets[totalMismatches++] = endPos;
 
-				// quit early if we have more than the max number of
-				// possible mismatches (performance optimization)
-				if (totalMismatches > maxTotalMismatches) {
-					break;
-				}
+                // quit early if we have more than the max number of
+                // possible mismatches (performance optimization)
+                if (totalMismatches > maxTotalMismatches) {
+                    break;
+                }
 
-				// increment mismatching character count
-				++currentNumMismatches;
+                // increment mismatching character count
+                ++currentNumMismatches;
 
-				if (currentNumMismatches > maxMismatches) {
-					// if we're "maxed out" on mismatches, we "eat" a mismatch
-					// from the beginning
-					startPos = mismatchOffsets[totalMismatches - maxMismatches
-							- 1] + 1;
-					--currentNumMismatches;
-				}
-			}
+                if (currentNumMismatches > maxMismatches) {
+                    // if we're "maxed out" on mismatches, we "eat" a mismatch
+                    // from the beginning
+                    startPos = mismatchOffsets[totalMismatches - maxMismatches
+                            - 1] + 1;
+                    --currentNumMismatches;
+                }
+            }
 
-			++endPos;
+            ++endPos;
 
-			// check to see if we have a new "longest substring"
-			if ((endPos - startPos) > longestMatchLength) {
-				// || ((endPos - startPos) == longestMatchLength &&
-				// currentNumMismatches < longestMatchMismatches)) {
-				longestMatchLength = endPos - startPos;
-				longestMatchMismatches = currentNumMismatches;
-				longestMatchPosition = startPos;
-				longestMatchMismatchesOffset = totalMismatches;
-			}
+            // check to see if we have a new "longest substring"
+            if ((endPos - startPos) > longestMatchLength) {
+                // || ((endPos - startPos) == longestMatchLength &&
+                // currentNumMismatches < longestMatchMismatches)) {
+                longestMatchLength = endPos - startPos;
+                longestMatchMismatches = currentNumMismatches;
+                longestMatchPosition = startPos;
+                longestMatchMismatchesOffset = totalMismatches;
+            }
 
-		}
+        }
 
-		if (longestMatchLength >= ProgramParameters.minMatchLength) {
-			Match match = results[queryNum];
+        if (longestMatchLength >= ProgramParameters.minMatchLength) {
+            processMatch(referencePosition, queryPosition, queryNum, match,
+                    compareOffset, longestMatchLength, longestMatchPosition,
+                    longestMatchMismatches, longestMatchMismatchesOffset);
 
-			if (match == null) {
-				synchronized (results) {
-					if (results[queryNum] == null) {
-						match = results[queryNum] = new Match();
-					} else {
-						match = results[queryNum];
-					}
-				}
-			}
+        }
+    }
 
-			synchronized (match) {
-				if (longestMatchLength > match.length
-						|| longestMatchLength == match.length
-						&& longestMatchMismatches < match.numMismatches) {
-					match.setValues(fileNum, referencePosition + compareOffset,
-							queryPosition + compareOffset, longestMatchPosition
-									- compareOffset, longestMatchLength,
-							longestMatchMismatches);
+    protected abstract void processMatch(int referencePosition,
+            int queryPosition, final int queryNum, Match match,
+            final int compareOffset, int longestMatchLength,
+            int longestMatchPosition, int longestMatchMismatches,
+            int longestMatchMismatchesOffset);
 
-					if (longestMatchMismatches > 0) {
-						if (match.mismatches == null) {
-							match.mismatches = new byte[ProgramParameters.maxMismatches * 2];
-						}
-						int j = 0;
-						for (int i = 0; i < longestMatchMismatches; ++i) {
-							int offset = mismatchOffsets[longestMatchMismatchesOffset
-									- longestMatchMismatches + i];
-							match.mismatches[j++] = (byte) (offset
-									- compareOffset + 1);
-							match.mismatches[j++] = reference[referencePosition
-									+ offset];
-						}
-					}
-					long hit = ((long) referencePosition + (long) compareOffset) << 32;
-					hit += queryPosition + compareOffset;
-					hits.add(hit);
-				} else if (longestMatchLength == match.length && longestMatchMismatches == match.numMismatches) {
-					long hit = ((long) referencePosition + (long) compareOffset) << 32;
-					hit += queryPosition + compareOffset;
-					if (hits.add(hit)) {
-						++match.matchCount;
-					}
-				}
-			}
-		}
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		Aligner newAligner = (Aligner) super.clone();
-		newAligner.mismatchOffsets = new int[ProgramParameters.queryLength];
-		return newAligner;
-	}
+    public Object clone() throws CloneNotSupportedException {
+        Aligner newAligner = (Aligner) super.clone();
+        newAligner.mismatchOffsets = new int[ProgramParameters.queryLength];
+        return newAligner;
+    }
 }

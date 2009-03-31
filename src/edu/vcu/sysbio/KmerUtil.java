@@ -1,6 +1,9 @@
 /*
  * $Log: KmerUtil.java,v $
- * Revision 1.4  2008/09/27 17:08:38  hugh
+ * Revision 1.5  2009/03/31 15:47:28  hugh
+ * Updated for 0.2 release
+ *
+ * Revision 1.4  2008-09-27 17:08:38  hugh
  * Updated.
  *
  * Revision 1.3  2008-08-13 19:08:46  hugh
@@ -36,263 +39,222 @@ import java.util.logging.Logger;
  * 
  * @author Hugh
  * @since Feb 19, 2008
- * @version $Revision: 1.4 $
+ * @version $Revision: 1.5 $
  * 
  */
 public class KmerUtil {
-	private static Logger log = Logger.getLogger(KmerUtil.class.toString());
+    private static Logger log = Logger.getLogger(KmerUtil.class.toString());
 
-	/**
-	 * Creates the bitmask used for creating kmers based on the kmer length
-	 * 
-	 * @param kmerLength
-	 * @return
-	 */
-	public static final long computeMask(int kmerLength) {
-		long mask = 0xffffffff;
-		mask = mask >>> (64 - (kmerLength * 2));
-		log.fine("mask = " + mask + ", kmerLength = " + kmerLength);
-		return mask;
-	}
+    public static final byte[] BYTE_TO_BITS = {
+            // 0..15
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 16..31
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 32..47
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 48..63
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 64..79
+            0, 0 /* A */, 0, 1 /* C */, 0, 0, 0, 2 /* G */, 0, 0, 0, 0, 0, 0,
+            0, 0,
+            // 80..95
+            0, 0, 0, 0, 3 /* T */, 3 /* U */, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 96..111
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            // 112..127
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	/**
-	 * Adds one byte to an existing kmer
-	 * 
-	 * @param currentHash
-	 * @param mask
-	 * @param nextCharacter
-	 * @return
-	 */
-	public static final long addByteToKmer(long currentKmer, long mask,
-			byte nextCharacter) {
-		currentKmer = currentKmer << 2; // shift our hash value
-		currentKmer = currentKmer & mask; // clear the high order bits
+    /**
+     * Creates the bitmask used for creating kmers based on the kmer length
+     * 
+     * @param kmerLength
+     * @return
+     */
+    public static final long computeMask(int kmerLength) {
+        long mask = 0xffffffff;
+        mask = mask >>> (64 - (kmerLength * 2));
+        log.fine("mask = " + mask + ", kmerLength = " + kmerLength);
+        return mask;
+    }
 
-		currentKmer += byteToBits(nextCharacter);
+    /**
+     * Adds one byte to an existing kmer
+     * 
+     * @param currentHash
+     * @param mask
+     * @param nextCharacter
+     * @return
+     */
+    public static final long addByteToKmer(long currentKmer, long mask,
+            byte nextCharacter) {
+        currentKmer = currentKmer << 2; // shift our hash value
+        currentKmer = currentKmer & mask; // clear the high order bits
 
-		return currentKmer;
-	}
+        currentKmer += BYTE_TO_BITS[nextCharacter];
 
-	/**
-	 * Builts a kmer using bytes from reference[0] to reference[kmerLength - 2]
-	 * (i.e. number of bytes used is one less than the size of the kmer)
-	 * 
-	 * @param reference
-	 * @param mask
-	 * @param startPos
-	 * @return
-	 */
-	public static final long initializeKmer(byte[] reference, int kmerLength,
-			int startPos) {
-		long kmer = 0;
-		for (int i = startPos; i < startPos + kmerLength - 1; ++i) {
-			kmer = kmer << 2; // shift our hash value
-			kmer += byteToBits(reference[i]);
-		}
-		return kmer;
-	}
+        return currentKmer;
+    }
 
-	public static final int byteToBits(byte b) {
-		if (b == 'G') {
-			return 1;
-		} else if (b == 'C') {
-			return 2;
-		} else if (b == 'T' || b == 'U') {
-			return 3;
-		}
-		return 0;
-	}
+    public static final String kmerToString(long kmer, int kmerLength) {
+        long mask = 3;
+        StringBuffer buf = new StringBuffer();
+        for (int i = 0; i < kmerLength; ++i) {
+            long bits = kmer & mask;
+            if (bits == 1) {
+                buf.insert(0, 'C');
+            } else if (bits == 2) {
+                buf.insert(0, 'G');
+            } else if (bits == 3) {
+                buf.insert(0, 'T');
+            } else {
+                buf.insert(0, 'A');
+            }
+            kmer = kmer >> 2;
+        }
 
-	public static final String kmerToString(long kmer, int kmerLength) {
-		long mask = 3;
-		StringBuffer buf = new StringBuffer();
-		for (int i = 0; i < kmerLength; ++i) {
-			long bits = kmer & mask;
-			if (bits == 1) {
-				buf.insert(0, 'G');
-			} else if (bits == 2) {
-				buf.insert(0, 'C');
-			} else if (bits == 3) {
-				buf.insert(0, 'T');
-			} else {
-				buf.insert(0, 'A');
-			}
-			kmer = kmer >> 2;
-		}
+        return buf.toString();
+    }
 
-		return buf.toString();
-	}
+    public static void generateQueryKmers(byte[] data, int start, int end,
+            int kmerLength, int kmerInterval, int queryLength,
+            String statusMessage, KmerProcessor kmerProcessor) {
 
-	public static void generateQueryKmers(byte[] data, int start, int end,
-			int kmerLength, int kmerInterval, int queryLength,
-			String statusMessage, KmerProcessor kmerProcessor) {
+        long mask = computeMask(kmerLength);
+        byte ch;
+        int currentLength = 0;
+        long kmer = 0;
 
-		long mask = computeMask(kmerLength);
-		byte ch;
-		int currentLength = 0;
-		long kmer = 0;
-		int dataLength = end - start;
+        for (int i = start; i < end; ++i) {
 
-		for (int i = start; i < end; ++i) {
-			// if (i % (dataLength / 99) == 0) {
-			// System.out.println(statusMessage + " - "
-			// + ((long) i * 100 / dataLength) + "% done");
-			// }
+            ch = data[i];
+            if (ch != InputFile.NOMATCH_CHAR && ch != InputFile.WILDCARD_CHAR) {
+                ++currentLength;
+                kmer = addByteToKmer(kmer, mask, data[i]);
+                if (((currentLength % kmerInterval == 0) || (currentLength
+                        % queryLength == 0))
+                        && currentLength >= kmerLength) {
+                    kmerProcessor.processKmer(kmer, i - kmerLength + 1);
+                    if (currentLength >= queryLength) {
+                        currentLength = 0;
+                    }
+                }
+            } else {
+                if (((currentLength % kmerInterval != 0) && (currentLength
+                        % queryLength == 0))
+                        && currentLength >= kmerLength) {
+                    kmerProcessor.processKmer(kmer, i - kmerLength + 1);
+                }
+                currentLength = 0;
+            }
+        }
+        if (((currentLength % kmerInterval != 0) && (currentLength
+                % queryLength == 0))
+                && currentLength >= kmerLength) {
+            kmerProcessor.processKmer(kmer, end - kmerLength + 1);
+        }
+    }
 
-			ch = data[i];
-			if (ch != InputFile.NOMATCH_CHAR && ch != InputFile.WILDCARD_CHAR) {
-				++currentLength;
-				kmer = addByteToKmer(kmer, mask, data[i]);
-				if (((currentLength % kmerInterval == 0) || (currentLength
-						% queryLength == 0))
-						&& currentLength >= kmerLength) {
-					kmerProcessor.processKmer(kmer, i - kmerLength + 1);
-					if (currentLength >= queryLength) {
-						currentLength = 0;
-					}
-				}
-			} else {
-				if (((currentLength % kmerInterval != 0) && (currentLength
-						% queryLength == 0))
-						&& currentLength >= kmerLength) {
-					kmerProcessor.processKmer(kmer, i - kmerLength + 1);
-				}
-				currentLength = 0;
-			}
-		}
-		if (((currentLength % kmerInterval != 0) && (currentLength
-				% queryLength == 0))
-				&& currentLength >= kmerLength) {
-			kmerProcessor.processKmer(kmer, end - kmerLength + 1);
-		}
-	}
+    public static void generateReferenceKmers(byte[] data, int start, int end,
+            int kmerLength, int kmerInterval, KmerProcessor kmerProcessor) {
 
-	public static void generateReferenceKmers(byte[] data, int start, int end,
-			int kmerLength, int kmerInterval, KmerProcessor kmerProcessor) {
+        long mask = computeMask(kmerLength);
+        byte ch;
+        int currentLength = 0;
+        long kmer = 0;
+        int dataLength = end - start;
 
-		long mask = computeMask(kmerLength);
-		byte ch;
-		int currentLength = 0;
-		long kmer = 0;
-		int dataLength = end - start;
+        for (int i = start; i < end; ++i) {
+            // if (i % (dataLength / 99) == 0) {
+            // System.out.println(
+            // (((long) i * 100 / dataLength)) + "% done");
+            // }
 
-		for (int i = start; i < end; ++i) {
-			// if (i % (dataLength / 99) == 0) {
-			// System.out.println(
-			// (((long) i * 100 / dataLength)) + "% done");
-			// }
+            ch = data[i];
+            if (ch != InputFile.NOMATCH_CHAR && ch != InputFile.WILDCARD_CHAR) {
+                ++currentLength;
+                kmer = addByteToKmer(kmer, mask, data[i]);
+                if ((currentLength % kmerInterval == 0)
+                        && currentLength >= kmerLength) {
+                    kmerProcessor.processKmer(kmer, i - kmerLength + 1);
+                }
+            } else {
+                if (currentLength % kmerInterval != 0
+                        && currentLength >= kmerLength) {
+                    kmerProcessor.processKmer(kmer, i - kmerLength + 1);
+                }
+                currentLength = 0;
+            }
+        }
+        if (currentLength % kmerInterval != 0 && currentLength >= kmerLength) {
+            kmerProcessor.processKmer(kmer, end - kmerLength + 1);
+        }
+    }
 
-			ch = data[i];
-			if (ch != InputFile.NOMATCH_CHAR && ch != InputFile.WILDCARD_CHAR) {
-				++currentLength;
-				kmer = addByteToKmer(kmer, mask, data[i]);
-				if ((currentLength % kmerInterval == 0)
-						&& currentLength >= kmerLength) {
-					kmerProcessor.processKmer(kmer, i - kmerLength + 1);
-				}
-			} else {
-				if (currentLength % kmerInterval != 0
-						&& currentLength >= kmerLength) {
-					kmerProcessor.processKmer(kmer, i - kmerLength + 1);
-				}
-				currentLength = 0;
-			}
-		}
-		if (currentLength % kmerInterval != 0 && currentLength >= kmerLength) {
-			kmerProcessor.processKmer(kmer, end - kmerLength + 1);
-		}
-	}
+    public static Collection<Callable<Object>> buildTasks(InputFile file,
+            KmerProcessor prototypeTask) {
+        int numTasks = 0;
+        int maxTasks = ProgramParameters.numThreads * 50;
 
-	public static int calculateIndexSize(InputFile file) {
-//		long maxKmers = 0;
-//		long numKmers = 0;
-//		long indexSize = 0;
-//
-//		long dataLength = file.dataOffsets[file.dataOffsets.length - 1]
-//				- file.dataOffsets[0];
-//
-//		if (ProgramParameters.kmerLength <= 31) {
-//			maxKmers = 4 << ((ProgramParameters.kmerLength - 1) * 2);
-//		} else {
-//			maxKmers = Long.MAX_VALUE;
-//		}
-//
-//		if (file.referenceFile) {
-//			numKmers = dataLength / ProgramParameters.referenceKmerInterval;
-//		} else {
-//			long kmersPerQuery = ProgramParameters.queryLength
-//					/ ProgramParameters.queryKmerInterval;
-//			if (ProgramParameters.queryLength
-//					% ProgramParameters.queryKmerInterval != 0) {
-//				++kmersPerQuery;
-//			}
-//			numKmers = (dataLength / ProgramParameters.queryLength)
-//					* kmersPerQuery;
-//		}
-//
-//		if (numKmers > maxKmers) {
-//			indexSize = maxKmers;
-//		} else {
-//			indexSize = (numKmers / 2);
-//		}
-//
-//		System.out.println("Using initial index size of " + indexSize + " for "
-//				+ file.fileName);
-//		if (indexSize > Integer.MAX_VALUE) {
-//			return Integer.MAX_VALUE;
-//		} else {
-//			return (int) indexSize;
-//		}
-		
-		return 1;
-	}
+        Collection<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
 
-	public static Collection<Callable<Object>> buildTasks(InputFile file,
-			KmerProcessor prototypeTask, int numTasks) {
-		Collection<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
+        System.out.println("TOTAL DATA: start = " + file.segmentStart[0]
+                + ", end = " + file.segmentEnd[file.numSegments - 1]);
 
-		System.out.println("TOTAL DATA: start = " + file.dataOffsets[0]
-				+ ", end = " + file.dataOffsets[file.dataOffsets.length - 1]);
+        if (file.referenceFile) {
+            int totalLength = file.segmentEnd[file.numSegments - 1]
+                    - file.segmentStart[0];
 
-		if (file.referenceFile) {
-			int totalLength = file.dataOffsets[file.dataOffsets.length - 1]
-					- file.dataOffsets[0];
-			for (int i = 0; i < numTasks; ++i) {
-				int start = (int) ((long) file.dataOffsets[0] + (((long) totalLength * i) / numTasks));
-				int end = (int) ((long) file.dataOffsets[0] + (((long) totalLength * (i + 1)) / numTasks));
-				if (i > 0) {
-					start = start - ProgramParameters.kmerLength + 1;
-				}
-				System.out.println("start = " + start + ", end = " + end);
-				KmerProcessor processor;
-				try {
-					processor = (KmerProcessor) prototypeTask.clone();
-				} catch (CloneNotSupportedException e) {
-					throw new SearchException(e);
-				}
-				processor.setStart(start);
-				processor.setEnd(end);
-				tasks.add(processor);
-			}
-		} else {
-			int numQueries = (file.dataOffsets[file.dataOffsets.length - 1] - file.dataOffsets[0])
-					/ ProgramParameters.queryLength;
-			for (int i = 0; i < numTasks; ++i) {
-				int start = (int) (((long) file.dataOffsets[0] + (((long) numQueries * i) / numTasks)) * ProgramParameters.queryLength);
-				int end = (int) (((long) file.dataOffsets[0] + (((long) numQueries * (i + 1)) / numTasks)) * ProgramParameters.queryLength);
-				System.out.println("start = " + start + ", end = " + end);
-				KmerProcessor processor;
-				try {
-					processor = (KmerProcessor) prototypeTask.clone();
-				} catch (CloneNotSupportedException e) {
-					throw new SearchException(e);
-				}
-				processor.setStart(start);
-				processor.setEnd(end);
-				tasks.add(processor);
-			}
-		}
+            numTasks = totalLength / 5000;
+            if (numTasks > maxTasks) {
+                numTasks = maxTasks;
+            } else if (numTasks < 1) {
+                numTasks = 1;
+            }
 
-		return tasks;
-	}
+            for (int i = 0; i < numTasks; ++i) {
+                int start = (int) ((long) file.segmentStart[0] + (((long) totalLength * i) / numTasks));
+                int end = (int) ((long) file.segmentStart[0] + (((long) totalLength * (i + 1)) / numTasks));
+                if (i > 0) {
+                    start = start - ProgramParameters.kmerLength + 1;
+                }
+                System.out.println("start = " + start + ", end = " + end);
+                KmerProcessor processor;
+                try {
+                    processor = (KmerProcessor) prototypeTask.clone();
+                } catch (CloneNotSupportedException e) {
+                    throw new SearchException(e);
+                }
+                processor.setStart(start);
+                processor.setEnd(end);
+                tasks.add(processor);
+            }
+        } else {
+            int numQueries = (file.segmentEnd[file.numSegments - 1] - file.segmentStart[0])
+                    / ProgramParameters.queryLength;
+
+            numTasks = numQueries / 10;
+            if (numTasks > maxTasks) {
+                numTasks = maxTasks;
+            } else if (numTasks < 1) {
+                numTasks = 1;
+            }
+
+            for (int i = 0; i < numTasks; ++i) {
+                int start = (int) (((long) file.segmentStart[0] + ((((long) numQueries * i) / numTasks)) * ProgramParameters.queryLength));
+                int end = (int) (((long) file.segmentStart[0] + ((((long) numQueries * (i + 1)) / numTasks)) * ProgramParameters.queryLength));
+                System.out.println("start = " + start + ", end = " + end);
+                KmerProcessor processor;
+                try {
+                    processor = (KmerProcessor) prototypeTask.clone();
+                } catch (CloneNotSupportedException e) {
+                    throw new SearchException(e);
+                }
+                processor.setStart(start);
+                processor.setEnd(end);
+                tasks.add(processor);
+            }
+        }
+
+        return tasks;
+    }
 }
