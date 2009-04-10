@@ -1,6 +1,9 @@
 /*
  * $Log: ReferenceAligner.java,v $
- * Revision 1.4  2009/03/31 15:47:28  hugh
+ * Revision 1.5  2009/04/10 17:49:39  hugh
+ * Minor bug fixes.
+ *
+ * Revision 1.4  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.3  2008-09-27 17:08:38  hugh
@@ -47,7 +50,8 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
         KmerPositionList queryPositions = queriesIndex.getKmerPositions(kmer);
 
         for (int i = 0; i < queryPositions.positionCount; ++i) {
-    //        System.out.println ("kmer = " + KmerUtil.kmerToString(kmer, ProgramParameters.kmerLength));
+            // System.out.println ("kmer = " + KmerUtil.kmerToString(kmer,
+            // ProgramParameters.kmerLength));
             doAlignment(referencePosition, queryPositions.positions[i]);
         }
     }
@@ -82,7 +86,8 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
                     for (int i = 0; i < longestMatchMismatches; ++i) {
                         int offset = mismatchOffsets[longestMatchMismatchesOffset
                                 - longestMatchMismatches + i];
-                        match.mismatchData[j++] = (byte) (offset - compareOffset + 1);
+                        match.mismatchData[j++] = (byte) (offset
+                                - compareOffset + 1);
                         match.mismatchData[j++] = reference[referencePosition
                                 + offset];
                     }
@@ -94,7 +99,7 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
                 long hit = ((long) referencePosition + (long) compareOffset) << 32;
                 hit += queryPosition + compareOffset;
                 if (hits.add(hit)) {
-                    ++match.mismatchData[match.numMismatches];
+                    ++match.mismatchData[longestMatchMismatches];
                 }
             }
         }

@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: Search.java,v $
- * Revision 1.6  2009/03/31 15:47:28  hugh
+ * Revision 1.7  2009/04/10 17:49:39  hugh
+ * Minor bug fixes.
+ *
+ * Revision 1.6  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.5  2008-09-27 17:08:38  hugh
@@ -239,7 +242,7 @@ public class Search {
     }
 
     public static void main(String[] args) {
-        System.out.println("Maximum Oligo Mapping Version 0.2");
+        System.out.println("Maximum Oligonucleotide Mapping - Version 0.2");
         try {
 
             if (ProgramParameters.loadFromCommandLine(args)) {
