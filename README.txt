@@ -16,9 +16,10 @@ Contents
 
 Version    Date	       Description
 -------    ----        -----------
-0.1        9/15/2008   Initial release
-0.2        4/02/2009   RNA support, lowercase Fasta files, performance enhancements, minor bugfixes
-0.3RC      6/01/2009   Paired read initial implementation, improved output format compatibility with Eland
+0.1        09/15/2008  Initial release
+0.2        04/02/2009  RNA support, lowercase Fasta files, performance enhancements, minor bugfixes
+0.3RC      06/01/2009  Paired read initial implementation, improved output format compatibility with Eland
+0.4        07/15/2009  Improved performance when using a large number of small reference sequences.
 
 2. System Requirements
 ======================
@@ -65,7 +66,7 @@ Valid Values: Integer >= 1
 Parameter: k
 Description: Maximum number of allowed mismatching bases
 Required: Yes
-Valid Values: Integer >= 1
+Valid Values: Integer >= 0
 
 Parameter: q
 Description: Minimum number of bases in valid match (i.e. minimum sequence length)
@@ -75,7 +76,9 @@ Valid Values: Integer >= 1
 Parameter: searchMethod
 Description: The search algorithm that should be used
 Required: Yes
-Valid Values: indexQueries 
+Valid Values: indexQueries - index the queries, sequentially read reference sequence
+              indexReference - index the reference sequence, sequentially read queries
+              pairedQueries - match
 
 Parameter: querySeedInterval
 Description: The number of bases to skip between each seed in the query sequence
@@ -95,10 +98,21 @@ Required: No
 Default: floor (s / k + 1)
 Valid Values: Integer >= 1
 
-Parameter: query
+Parameter: query - single query file for single read mapping
+           query1, query2 - paired query files for paired read mapping
 Description: The filename containing the query sequences in FASTA or RAW format.
 Required: Yes
 Valid Values: Any valid filename
+
+Parameter: pairedReadMinGap
+Description: the distance (in bases) between reads below the reads are considered not to be part of a paired read
+Required: No
+Valid Values: Integer >= 1 <= pairedReadMaxGap
+
+Parameter: pairedReadMaxGap
+Description: the distance (in bases) between reads above which the reads are considered not to be part of a paired read
+Required: No
+Valid Values: Integer >= pairedReadMinGap
 
 Parameter: reference1 ... referenceN (multiple parameters)
 Description: The filename containing reference sequences in FASTA or RAW format. Multiple reference sequences may be specified (parameter name is reference1, reference2, etc.).
@@ -137,7 +151,7 @@ For FASTA reference files, MOM supports multiple FASTA segments per file. For th
 7. Output Format
 ======================
 
-MOM creates an Eland compatible output file. The output fields are tab deliminited. The field descriptions are as follows:
+MOM creates an Eland compatible output file. The output fields are tab delimited. The field descriptions are as follows:
 
 1. Read Id - Either the FASTA id for this read from the queries file, or in the case of "raw" input format, the file name followed by the line number
 
@@ -147,11 +161,11 @@ MOM creates an Eland compatible output file. The output fields are tab deliminit
 
 If there are one or more matches, the following fields will be filled:
 
-4. Number of zero mismatch matches - The numer of matches containing no mismatches.
+4. Number of zero mismatch matches - The number of matches containing no mismatches.
 
-5. Number of one mismatch matches - The numer of matches containing one mismatch.
+5. Number of one mismatch matches - The number of matches containing one mismatch.
 
-6. Number of two mismatch matches - The numer of matches containing two mismatches.
+6. Number of two mismatch matches - The number of matches containing two mismatches.
 
 If there is a unique match, the following fields will be filled:
 
@@ -163,4 +177,4 @@ If there is a unique match, the following fields will be filled:
 
 10. Unused - In MOM, this field is unused and will always contain "."
 
-11. Mismatching bases  - A space seperated list of the mismatches between the reference and query sequences. The format is "nB" where n is the position of the mismatch in the matching portion of the read (not from the first base in the entire read), and B is the base that was found in the reference genome.
+11. Mismatching bases  - A space separated list of the mismatches between the reference and query sequences. The format is "nB" where n is the position of the mismatch in the matching portion of the read (not from the first base in the entire read), and B is the base that was found in the reference genome.

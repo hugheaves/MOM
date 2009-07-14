@@ -1,6 +1,6 @@
 /*
  * $Log: Aligner.java,v $
- * Revision 1.6  2009/10/19 17:37:03  hugh
+ * Revision 1.6  2009-10-19 17:37:03  hugh
  * Revised.
  *
  * Revision 1.5  2009-03-31 15:47:28  hugh
@@ -31,6 +31,7 @@ package edu.vcu.sysbio;
  * 
  */
 public abstract class Aligner {
+
     protected int mismatchOffsets[];
     protected final int maxMismatches;
     protected final byte[] reference;
@@ -67,13 +68,13 @@ public abstract class Aligner {
 
         Match match = results[queryNum];
 
-        if (ProgramParameters.maxMatchesPerQuery != -1
-                && match != null
+        if (ProgramParameters.maxMatchesPerQuery != -1 && match != null
                 && mismatchCounts[match.numMismatches][queryNum] >= ProgramParameters.maxMatchesPerQuery) {
             return;
         }
 
-        final int compareOffset = -(queryPosition % ProgramParameters.queryLength);
+        final int compareOffset = -(queryPosition
+                % ProgramParameters.queryLength);
 
         int startPos = compareOffset;
         int endPos = compareOffset;
@@ -90,8 +91,13 @@ public abstract class Aligner {
         // substring with k mismatches
         while (endPos < finalPos) {
 
-            if (reference[referencePosition + endPos] != queries[queryPosition
-                    + endPos]) {
+            // compare the base
+            // if (reference[referencePosition + endPos] !=
+            // queries[queryPosition
+            // + endPos]) {
+
+            if (!BaseConstants.baseMatches[(reference[referencePosition
+                    + endPos] << 8) + queries[queryPosition + endPos]]) {
 
                 mismatchOffsets[totalMismatches++] = endPos;
 

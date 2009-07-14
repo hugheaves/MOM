@@ -1,6 +1,6 @@
 /*
  * $Log: InputFile.java,v $
- * Revision 1.5  2009/10/19 17:37:03  hugh
+ * Revision 1.5  2009-10-19 17:37:03  hugh
  * Revised.
  *
  * Revision 1.4  2009-03-31 15:47:28  hugh
@@ -37,39 +37,6 @@ import java.util.Arrays;
  * Supports the following base encoding characters from the standard NCBI fasta
  * format:
  * 
- * 
- * A --> adenosine
- * 
- * B --> G T C
- * 
- * C --> cytidine
- * 
- * D --> G A T
- * 
- * G --> guanine
- * 
- * H --> A C T
- * 
- * K --> G T (keto)
- * 
- * M --> A C (amino)
- * 
- * N --> A G C T (any)
- * 
- * R --> G A (purine)
- * 
- * S --> G C (strong)
- * 
- * T --> thymidine
- * 
- * U --> uridine
- * 
- * V --> G C A
- * 
- * W --> A T (weak)
- * 
- * Y --> T C (pyrimidine)
- * 
  * @author hugh
  * 
  */
@@ -84,24 +51,6 @@ public class InputFile {
     public int fileNum;
     public boolean reverseData;
     public boolean referenceFile;
-
-    public static final byte[] validBaseChars = {
-    // 0..15
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            // 16..31
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            // 32..47
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            // 48..63
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            // 64..79
-            0, 'A', 'B', 'C', 'D', 0, 0, 'G', 'H', 0, 0, 'K', 0, 'M', 'N', 0,
-            // 80..95
-            0, 0, 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 0, 0, 0, 0, 0, 0,
-            // 96..111
-            0, 'A', 'B', 'C', 'D', 0, 0, 'G', 'H', 0, 0, 'K', 0, 'M', 'N', 0,
-            // 112..127
-            0, 0, 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 0, 0, 0, 0, 0, 0 };
 
     // size of base data
     public int basesSize;
@@ -194,7 +143,7 @@ public class InputFile {
             ch = fileBuffer[bufferPos++];
 
             if (!inHeader) {
-                if (validBaseChars[ch] > 0) {
+                if (BaseConstants.validBases[ch] > 0) {
                     ++basesPos;
                     if (ch == 'u' || ch == 'U') {
                         rnaData = true;
@@ -220,9 +169,9 @@ public class InputFile {
                         }
                     }
                 } else {
-                    throw new SearchException("Invalid character '" + (char) ch
-                            + "' in file [" + fileName + "] at byte "
-                            + bytesProcessed);
+                    throw new SearchException(
+                            "Invalid character '" + (char) ch + "' in file ["
+                                    + fileName + "] at byte " + bytesProcessed);
                 }
             } else {
                 if (ch != 10 && ch != 13) {
@@ -303,8 +252,8 @@ public class InputFile {
             ch = fileBuffer[bufferPos++];
 
             if (!inHeader) {
-                if (validBaseChars[ch] > 0) {
-                    bases[basesPos++] = validBaseChars[ch];
+                if (BaseConstants.validBases[ch] > 0) {
+                    bases[basesPos++] = BaseConstants.validBases[ch];
                 } else if (ch == 13 || ch == 10) {
                     // do nothing
                 } else if (ch == '>') {
@@ -312,8 +261,9 @@ public class InputFile {
                     headerLength = 0;
                     if (referenceFile && headerCount > 0) {
                         segmentEnd[segmentCount] = basesPos;
-                        Arrays.fill(bases, basesPos, basesPos
-                                + ProgramParameters.queryLength, NOMATCH_CHAR);
+                        Arrays.fill(bases, basesPos,
+                                basesPos + ProgramParameters.queryLength,
+                                NOMATCH_CHAR);
                         basesPos += ProgramParameters.queryLength;
                         segmentStart[++segmentCount] = basesPos;
                         if (reverseData) {
@@ -351,28 +301,19 @@ public class InputFile {
     }
 
     private int reverseReference(int numSegments, int dataPos) {
-        for (int readPos = segmentEnd[numSegments - 1] - 1; readPos >= segmentStart[numSegments - 1]; --readPos) {
+        for (int readPos = segmentEnd[numSegments - 1]
+                - 1; readPos >= segmentStart[numSegments - 1]; --readPos) {
             byte ch = bases[readPos];
-            switch (ch) {
-            case 'A':
+            if (ch == 'A') {
+
                 if (rnaData) {
                     bases[dataPos++] = 'U';
                 } else {
                     bases[dataPos++] = 'T';
                 }
-                break;
-            case 'T':
-                bases[dataPos++] = 'A';
-                break;
-            case 'G':
-                bases[dataPos++] = 'C';
-                break;
-            case 'C':
-                bases[dataPos++] = 'G';
-                break;
-            default:
-                bases[dataPos++] = ch;
-                break;
+
+            } else {
+                bases[dataPos++] = BaseConstants.complementaryBases[ch];
             }
         }
 
@@ -390,8 +331,8 @@ public class InputFile {
     }
 
     private void debugDump() {
-        System.out
-                .println("======================== DUMP =======================");
+        System.out.println(
+                "======================== DUMP =======================");
         System.out.println("Filename = " + this.fileName);
         System.out.println("File number = " + this.fileNum);
         System.out
@@ -401,18 +342,18 @@ public class InputFile {
             System.out
                     .println("Segment # " + i + " start = " + segmentStart[i]);
             System.out.println("Segment # " + i + " end = " + segmentEnd[i]);
-            System.out.println("Segment Data: ["
-                    + new String(bases, segmentStart[i], segmentEnd[i]
-                            - segmentStart[i]) + "]");
+            System.out
+                    .println(
+                            "Segment Data: ["
+                                    + new String(bases, segmentStart[i],
+                                            segmentEnd[i] - segmentStart[i])
+                                    + "]");
 
         }
         System.out.println("Num headers = " + (headerStart.length - 1));
         for (int i = 0; i < headerStart.length - 1; ++i) {
-            System.out.println("Header # "
-                    + i
-                    + " = "
-                    + new String(headers, headerStart[i], headerStart[i + 1]
-                            - headerStart[i]));
+            System.out.println("Header # " + i + " = " + new String(headers,
+                    headerStart[i], headerStart[i + 1] - headerStart[i]));
         }
 
     }
