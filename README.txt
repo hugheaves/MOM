@@ -1,4 +1,4 @@
-Readme File for Pre-release Maximal Oligo Mapping (MOM) Software v0.3
+Readme File for Pre-release Maximal Oligo Mapping (MOM) Software v0.5
 
 Contents
 ======================
@@ -20,6 +20,7 @@ Version    Date	       Description
 0.2        04/02/2009  RNA support, lowercase Fasta files, performance enhancements, minor bugfixes
 0.3RC      06/01/2009  Paired read initial implementation, improved output format compatibility with Eland
 0.4        07/15/2009  Improved performance when using a large number of small reference sequences.
+0.5        02/11/2009  Fixed issue with output locations in paired read implementation
 
 2. System Requirements
 ======================
@@ -151,7 +152,10 @@ For FASTA reference files, MOM supports multiple FASTA segments per file. For th
 7. Output Format
 ======================
 
-MOM creates an Eland compatible output file. The output fields are tab delimited. The field descriptions are as follows:
+Single Reads
+------------
+
+For single reads, MOM creates an Eland compatible output file. The output fields are tab delimited. The field descriptions are as follows:
 
 1. Read Id - Either the FASTA id for this read from the queries file, or in the case of "raw" input format, the file name followed by the line number
 
@@ -178,3 +182,41 @@ If there is a unique match, the following fields will be filled:
 10. Unused - In MOM, this field is unused and will always contain "."
 
 11. Mismatching bases  - A space separated list of the mismatches between the reference and query sequences. The format is "nB" where n is the position of the mismatch in the matching portion of the read (not from the first base in the entire read), and B is the base that was found in the reference genome.
+
+Paired Reads
+------------
+
+For paired reads, MOM an output file, with each pair of reads creating one or more lines of output in the file. For pairs of reads where there are multiple unique matches for the pair (within gap range specified), one line of output is generated for each combination of match locations.
+
+Individual fields in the output file follow the same format as the single read (Eland) format, but with one set of fields for each read in the pair. 
+
+Field definitions:
+ 
+1. Match Status -
+N - No Match - 
+U - Unique Match, In Range -
+M - Multiple Matches, In Range -
+E - Unique Match, Outside Range - 
+X - Multiple Matches, Outside Range 
+
+2. Distance between reads (999,999,999 for different regions) 
+
+3. Read 1 - Read Id
+4. Read 1 - Total number of matches against this read
+5. Read 1 - Matching sequence (for a single match)
+6. Read 1 - Read start match position (for a single match)
+7. Read 1 - Read match length (for a single match)
+8. Read 1 - SNP's  (for a single match)
+9. Read 1 - Match Position on Reference
+10. Read 1 - Forward or reverse direction (F/R)
+11. Read 1 - Reference Sequence Id
+
+12. Read 2 - Read Id
+13. Read 2 - Total number of matches against this read
+14. Read 2 - Matching sequence (for a single match)
+15. Read 2 - Read start match position (for a single match)
+16. Read 2 - Read match length (for a single match)
+17. Read 2 - SNP's  (for a single match)
+18. Read 2 - Match Position on Reference
+19. Read 2 - Forward or reverse direction (F/R)
+20. Read 2 - Reference Sequence Id

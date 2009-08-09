@@ -80,16 +80,16 @@ public class Search {
     ArrayList<InputFile> referenceFiles = new ArrayList<InputFile>();
 
     public void search() throws SearchException {
-        System.out.println("Using kmer length of "
-                + ProgramParameters.kmerLength + ".");
+        System.out.println(
+                "Using kmer length of " + ProgramParameters.kmerLength + ".");
         System.out.println("Using reference kmer interval of "
                 + ProgramParameters.referenceKmerInterval + ".");
         System.out.println("Using queries kmer interval of "
                 + ProgramParameters.queryKmerInterval + ".");
         System.out.println("Using max matches per query of "
                 + ProgramParameters.maxMatchesPerQuery + ".");
-        System.out.println("Number of threads is "
-                + ProgramParameters.numThreads + ".");
+        System.out.println(
+                "Number of threads is " + ProgramParameters.numThreads + ".");
         System.out.flush();
 
         executor = Executors.newFixedThreadPool(ProgramParameters.numThreads);
@@ -115,8 +115,8 @@ public class Search {
         }
         InputFile referenceFile = referenceFiles.get(i);
         if (referenceFile == null) {
-            referenceFile = new InputFile(ProgramParameters.referenceFileNames
-                    .get(i), i, true, true);
+            referenceFile = new InputFile(
+                    ProgramParameters.referenceFileNames.get(i), i, true, true);
             referenceFile.loadFile();
             referenceFiles.set(i, referenceFile);
         } else {
@@ -171,12 +171,13 @@ public class Search {
 
         int[] checkedPositions;
 
-        InputFile queriesFile = loadQueriesFile(ProgramParameters.queryFileNames
-                .get(0));
+        InputFile queriesFile = loadQueriesFile(
+                ProgramParameters.queryFileNames.get(0));
 
         Match[] results = new Match[queriesFile.bases.length
                 / ProgramParameters.queryLength + 1];
-        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches + 1][];
+        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches
+                + 1][];
         for (int i = 0; i < mismatchCounts.length; ++i) {
             mismatchCounts[i] = new char[queriesFile.bases.length
                     / ProgramParameters.queryLength + 1];
@@ -215,14 +216,15 @@ public class Search {
 
     private void indexQueriesSearch() {
 
-        InputFile queriesFile = loadQueriesFile(ProgramParameters.queryFileNames
-                .get(0));
+        InputFile queriesFile = loadQueriesFile(
+                ProgramParameters.queryFileNames.get(0));
 
         KmerIndex queriesIndex = indexQueriesFile(queriesFile);
 
         Match[] results = new Match[queriesFile.bases.length
                 / ProgramParameters.queryLength + 1];
-        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches + 1][];
+        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches
+                + 1][];
         for (int i = 0; i < mismatchCounts.length; ++i) {
             mismatchCounts[i] = new char[queriesFile.bases.length
                     / ProgramParameters.queryLength + 1];
@@ -239,8 +241,8 @@ public class Search {
             ReferenceAligner aligner = new ReferenceAligner(referenceFile,
                     queriesIndex, results, mismatchCounts, hits);
 
-            Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
-                    referenceFile, aligner);
+            Collection<Callable<Object>> tasks = KmerUtil
+                    .buildTasks(referenceFile, aligner);
 
             try {
                 executor.invokeAll(tasks);
@@ -264,11 +266,12 @@ public class Search {
         InputFile[] queriesFiles = new InputFile[2];
         LinkedMatch[][] results = new LinkedMatch[2][];
         LongSet hits = LongSets.synchronize(new LongOpenHashSet());
-        char[][][] mismatchCounts = new char[2][ProgramParameters.maxMismatches + 1][];
+        char[][][] mismatchCounts = new char[2][ProgramParameters.maxMismatches
+                + 1][];
 
         for (int fileNum = 0; fileNum < 2; ++fileNum) {
-            queriesFiles[fileNum] = loadQueriesFile(ProgramParameters.queryFileNames
-                    .get(fileNum));
+            queriesFiles[fileNum] = loadQueriesFile(
+                    ProgramParameters.queryFileNames.get(fileNum));
         }
 
         if (queriesFiles[0].basesSize != queriesFiles[1].basesSize) {
@@ -282,22 +285,23 @@ public class Search {
         }
 
         for (int fileNum = 0; fileNum < 2; ++fileNum) {
-            for (int j = 0; j < mismatchCounts.length; ++j) {
+            for (int j = 0; j < mismatchCounts[fileNum].length; ++j) {
                 mismatchCounts[fileNum][j] = new char[queriesFiles[0].bases.length
                         / ProgramParameters.queryLength + 1];
             }
         }
 
         for (int fileNum = 0; fileNum < 2; ++fileNum) {
-//            if (fileNum > 1) {
-//                for (int i = 0; i < mismatchCounts.length; ++i) {
-//                    Arrays.fill(mismatchCounts[i], (char) 0);
-//                }
-//            }
+            // if (fileNum > 1) {
+            // for (int i = 0; i < mismatchCounts.length; ++i) {
+            // Arrays.fill(mismatchCounts[i], (char) 0);
+            // }
+            // }
 
             KmerIndex queriesIndex = indexQueriesFile(queriesFiles[fileNum]);
 
-            for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
+            for (int i = 0; i < ProgramParameters.referenceFileNames
+                    .size(); ++i) {
                 InputFile referenceFile = loadReferenceFile(i);
 
                 TimerEvent.EVENT_SEARCH_REFERENCE.start();
@@ -307,8 +311,8 @@ public class Search {
                         referenceFile, queriesIndex, results[fileNum],
                         mismatchCounts[fileNum], hits);
 
-                Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
-                        referenceFile, aligner);
+                Collection<Callable<Object>> tasks = KmerUtil
+                        .buildTasks(referenceFile, aligner);
 
                 try {
                     executor.invokeAll(tasks);
@@ -329,7 +333,7 @@ public class Search {
     }
 
     public static void main(String[] args) {
-        System.out.println("Maximum Oligonucleotide Mapping - Version 0.4");
+        System.out.println("Maximum Oligonucleotide Mapping - Version 0.5");
         try {
 
             if (ProgramParameters.loadFromCommandLine(args)) {

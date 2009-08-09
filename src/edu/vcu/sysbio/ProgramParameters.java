@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2008 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ProgramParameters.java,v $
- * Revision 1.6  2009/10/19 17:37:03  hugh
+ * Revision 1.6  2009-10-19 17:37:03  hugh
  * Revised.
  *
  * Revision 1.5  2009-03-31 15:47:28  hugh
@@ -85,8 +84,8 @@ public class ProgramParameters {
                 PARAM_QUERY_KMER_INTERVAL, "query kmer interval", false,
                 ParamMetaData.Type.INTEGER));
         mainParameters.put(PARAM_REFERENCE_KMER_INTERVAL, new ParamMetaData(
-                PARAM_REFERENCE_KMER_INTERVAL, "reference kmer interval",
-                false, ParamMetaData.Type.INTEGER));
+                PARAM_REFERENCE_KMER_INTERVAL, "reference kmer interval", false,
+                ParamMetaData.Type.INTEGER));
         mainParameters.put(PARAM_KMER_LENGTH, new ParamMetaData(
                 PARAM_KMER_LENGTH, "seed length", false,
                 ParamMetaData.Type.INTEGER));
@@ -95,10 +94,10 @@ public class ProgramParameters {
                 ParamMetaData.Type.INTEGER));
         mainParameters.put(PARAM_PAIRED_READ_MAX_GAP, new ParamMetaData(
                 PARAM_PAIRED_READ_MAX_GAP, "paired read maximum gap size",
-                false, ParamMetaData.Type.BOOLEAN));
+                false, ParamMetaData.Type.INTEGER));
         mainParameters.put(PARAM_PAIRED_READ_MIN_GAP, new ParamMetaData(
                 PARAM_PAIRED_READ_MIN_GAP, "paired read minimum gap size",
-                false, ParamMetaData.Type.BOOLEAN));
+                false, ParamMetaData.Type.INTEGER));
     }
 
     private static ParamMetaData referenceParam = new ParamMetaData(
@@ -129,8 +128,9 @@ public class ProgramParameters {
     public static boolean pairedReads;
     public static int pairedReadMaxGap;
     public static int pairedReadMinGap;
-
-    public static boolean loadFromCommandLine(String[] args) throws IOException {
+ 
+    public static boolean loadFromCommandLine(String[] args)
+            throws IOException {
         Properties properties = new Properties();
 
         for (int i = 0; i < args.length; ++i) {
@@ -139,8 +139,8 @@ public class ProgramParameters {
                 try {
                     inStream = new FileInputStream(args[i].substring(1));
                 } catch (FileNotFoundException e) {
-                    System.out.println("Properties file "
-                            + args[i].substring(1) + " not found.");
+                    System.out.println("Properties file " + args[i].substring(1)
+                            + " not found.");
                     return false;
                 }
                 properties.load(inStream);
@@ -164,8 +164,8 @@ public class ProgramParameters {
         if (paramValue == null) {
             if (metaData.isRequired()) {
                 System.out.println("Parameter '" + metaData.getName()
-                        + "' is missing. Must specify '"
-                        + metaData.getDescription() + "'.");
+                        + "' is missing. Must specify '" + metaData
+                                .getDescription() + "'.");
                 return false;
             } else {
                 return true;
@@ -222,14 +222,14 @@ public class ProgramParameters {
         }
 
         if (errorCount == 0) {
-            minMatchLength = Integer.parseInt(properties
-                    .getProperty(PARAM_MIN_MATCH_LENGTH));
+            minMatchLength = Integer.parseInt(properties.getProperty(
+                    PARAM_MIN_MATCH_LENGTH));
 
-            queryLength = Integer.parseInt(properties
-                    .getProperty(PARAM_QUERY_LENGTH));
+            queryLength = Integer.parseInt(properties.getProperty(
+                    PARAM_QUERY_LENGTH));
 
-            maxMismatches = Integer.parseInt(properties
-                    .getProperty(PARAM_MAX_MISMATCHES));
+            maxMismatches = Integer.parseInt(properties.getProperty(
+                    PARAM_MAX_MISMATCHES));
 
             outputFileName = properties.getProperty(PARAM_OUTPUT_FILE);
 
@@ -246,15 +246,15 @@ public class ProgramParameters {
             }
 
             if (properties.getProperty(PARAM_NUM_THREADS) != null) {
-                numThreads = Integer.parseInt(properties
-                        .getProperty(PARAM_NUM_THREADS));
+                numThreads = Integer.parseInt(properties.getProperty(
+                        PARAM_NUM_THREADS));
             } else {
                 numThreads = 1;
             }
 
             if (properties.getProperty(PARAM_KMER_LENGTH) != null) {
-                kmerLength = Integer.parseInt(properties
-                        .getProperty(PARAM_KMER_LENGTH));
+                kmerLength = Integer.parseInt(properties.getProperty(
+                        PARAM_KMER_LENGTH));
             } else {
                 kmerLength = minMatchLength / (maxMismatches + 1);
 
@@ -264,36 +264,36 @@ public class ProgramParameters {
             }
 
             if (properties.getProperty(PARAM_QUERY_KMER_INTERVAL) != null) {
-                queryKmerInterval = Integer.parseInt(properties
-                        .getProperty(PARAM_QUERY_KMER_INTERVAL));
+                queryKmerInterval = Integer.parseInt(properties.getProperty(
+                        PARAM_QUERY_KMER_INTERVAL));
             } else {
                 queryKmerInterval = kmerLength;
             }
 
             if (properties.getProperty(PARAM_REFERENCE_KMER_INTERVAL) != null) {
-                referenceKmerInterval = Integer.parseInt(properties
-                        .getProperty(PARAM_REFERENCE_KMER_INTERVAL));
+                referenceKmerInterval = Integer.parseInt(properties.getProperty(
+                        PARAM_REFERENCE_KMER_INTERVAL));
             } else {
                 referenceKmerInterval = 1;
             }
 
             if (properties.getProperty(PARAM_MAX_MATCHES_PER_QUERY) != null) {
-                maxMatchesPerQuery = Integer.parseInt(properties
-                        .getProperty(PARAM_MAX_MATCHES_PER_QUERY));
+                maxMatchesPerQuery = Integer.parseInt(properties.getProperty(
+                        PARAM_MAX_MATCHES_PER_QUERY));
             } else {
                 maxMatchesPerQuery = -1;
             }
 
             if (properties.getProperty(PARAM_PAIRED_READ_MAX_GAP) != null) {
-                pairedReadMaxGap = Integer.parseInt(properties
-                        .getProperty(PARAM_PAIRED_READ_MAX_GAP));
+                pairedReadMaxGap = Integer.parseInt(properties.getProperty(
+                        PARAM_PAIRED_READ_MAX_GAP));
             } else {
                 pairedReadMaxGap = -1;
             }
 
             if (properties.getProperty(PARAM_PAIRED_READ_MIN_GAP) != null) {
-                pairedReadMinGap = Integer.parseInt(properties
-                        .getProperty(PARAM_PAIRED_READ_MIN_GAP));
+                pairedReadMinGap = Integer.parseInt(properties.getProperty(
+                        PARAM_PAIRED_READ_MIN_GAP));
             } else {
                 pairedReadMinGap = -1;
             }
@@ -322,8 +322,8 @@ public class ProgramParameters {
 
         if (validateParameter(properties, referenceParam)) {
             if (properties.getProperty(PARAM_REFERENCE_FILE) != null)
-                referenceFileNames.add(properties
-                        .getProperty(PARAM_REFERENCE_FILE));
+                referenceFileNames.add(properties.getProperty(
+                        PARAM_REFERENCE_FILE));
         } else {
             ++errorCount;
         }

@@ -1,6 +1,7 @@
 package edu.vcu.sysbio;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -123,22 +124,27 @@ public class PairedOutput {
 
         BufferedWriter ps;
         try {
-            ps = new BufferedWriter(new FileWriter(
-                    ProgramParameters.outputFileName));
+            ps = new BufferedWriter(
+                    new FileWriter(ProgramParameters.outputFileName));
 
             ObjectArrayList<MatchWrapper> listA = ObjectArrayList
                     .wrap(new MatchWrapper[0]);
             ObjectArrayList<MatchWrapper> listB = ObjectArrayList
                     .wrap(new MatchWrapper[0]);
 
+            IntArrayList matchNumsA = new IntArrayList();
+            IntArrayList matchNumsB = new IntArrayList();
+            IntArrayList matchDistances = new IntArrayList();
+
             int numQueries = queriesFiles[0].basesSize
                     / ProgramParameters.queryLength;
             for (int queryNum = 1; queryNum < numQueries - 1; ++queryNum) {
                 int inRange = 0;
                 int outOfRange = 0;
-                int matchNumA = 0;
-                int matchNumB = 0;
-                int matchDistance = 0;
+
+                matchNumsA.clear();
+                matchNumsB.clear();
+                matchDistances.clear();
 
                 loadMatches(listA, referenceFiles, results[0][queryNum]);
                 loadMatches(listB, referenceFiles, results[1][queryNum]);
@@ -152,14 +158,16 @@ public class PairedOutput {
                     for (int j = pos; j < listB.size(); ++j) {
                         // System.out.println("a[" + i + "] = " + listA.get(i));
                         // System.out.println("b[" + j + "] = " + listB.get(j));
-                        int distance = distance(listA.get(i), listB.get(j));
-                        if (Math.abs(distance) <= ProgramParameters.pairedReadMaxGap
-                                && Math.abs(distance) >= ProgramParameters.pairedReadMinGap) {
+                        int distance = distance(listB.get(i), listA.get(j));
+                        if (Math.abs(
+                                distance) <= ProgramParameters.pairedReadMaxGap
+                                && Math.abs(
+                                        distance) >= ProgramParameters.pairedReadMinGap) {
                             // we have a match :)
                             ++inRange;
-                            matchNumA = i;
-                            matchNumB = j;
-                            matchDistance = distance;
+                            matchNumsA.add(i);
+                            matchNumsB.add(j);
+                            matchDistances.add(distance);
                         } else {
                             // we don't have a match :(
                             if (distance > 0) {
@@ -167,9 +175,9 @@ public class PairedOutput {
                             }
                             ++outOfRange;
                             if (inRange == 0) {
-                                matchNumA = i;
-                                matchNumB = j;
-                                matchDistance = distance;
+                                matchNumsA.add(i);
+                                matchNumsB.add(j);
+                                matchDistances.add(distance);
                             }
                             if (distance < 0) {
                                 break;
@@ -185,25 +193,31 @@ public class PairedOutput {
                 if (listA.size() == 0 || listB.size() == 0) {
                     // one or the other has no match, so we have no paired match
                     outputMatches(ps, "N", 0, referenceFiles, queriesFiles,
-                            queryNum, matchNumA, listA, matchNumB, listB, false);
+                            queryNum, 0, listA, 0, listB, false);
                 } else if (inRange == 1) {
                     // we have one unique paired match
-                    outputMatches(ps, "U", matchDistance, referenceFiles,
-                            queriesFiles, queryNum, matchNumA, listA,
-                            matchNumB, listB, true);
+                    outputMatches(ps, "U", matchDistances.getInt(0),
+                            referenceFiles, queriesFiles, queryNum,
+                            matchNumsA.getInt(0), listA, matchNumsB.getInt(0),
+                            listB, true);
                 } else if (inRange > 1) {
                     // we have more than one paired match
-                    outputMatches(ps, "M", 0, referenceFiles, queriesFiles,
-                            queryNum, matchNumA, listA, matchNumB, listB, false);
+                    for (int i = 0; i < inRange; ++i) {
+                        outputMatches(ps, "M", matchDistances.getInt(0),
+                                referenceFiles, queriesFiles, queryNum,
+                                matchNumsA.getInt(i), listA,
+                                matchNumsB.getInt(i), listB, true);
+                    }
                 } else if (inRange == 0 && outOfRange == 1 && listA.size() == 1
                         && listB.size() == 1) {
                     // we have a unique "out of range" match
-                    outputMatches(ps, "E", matchDistance, referenceFiles,
-                            queriesFiles, queryNum, matchNumA, listA,
-                            matchNumB, listB, true);
-                } else {
+                    outputMatches(ps, "E", matchDistances.getInt(0),
+                            referenceFiles, queriesFiles, queryNum,
+                            matchNumsA.getInt(0), listA, matchNumsB.getInt(0),
+                            listB, true);
+                } else { // multiple "out of range" matches
                     outputMatches(ps, "X", 0, referenceFiles, queriesFiles,
-                            queryNum, matchNumA, listA, matchNumB, listB, false);
+                            queryNum, 0, listA, 0, listB, false);
                 }
 
             }
@@ -217,30 +231,31 @@ public class PairedOutput {
 
     private static void outputMatches(BufferedWriter output, String status,
             int distance, List<InputFile> referenceFiles,
-            InputFile[] queriesFiles, int queryNum, int matchNumA,
-            ObjectArrayList<MatchWrapper> listA, int matchNumB,
-            ObjectArrayList<MatchWrapper> listB, boolean uniqueMatch)
-            throws IOException {
+            InputFile[] queriesFiles, int queryNum, int matchNumsA,
+            ObjectArrayList<MatchWrapper> listA, int matchNumsB,
+            ObjectArrayList<MatchWrapper> listB,
+            boolean outputMatches) throws IOException {
+
         outputBuffer.setLength(0);
         outputBuffer.append(status);
         outputBuffer.append("\t");
         outputBuffer.append(Integer.toString(distance));
         outputBuffer.append("\t");
-        if (listA.size() == 1 || uniqueMatch) {
-            outputMatch(referenceFiles, queriesFiles[0], queryNum, matchNumA,
+        if (outputMatches || listA.size() == 1) {
+            outputMatch(referenceFiles, queriesFiles[0], queryNum, matchNumsA,
                     listA);
 
         } else {
-            outputNoMatch(referenceFiles, queriesFiles[0], queryNum, matchNumA,
+            outputNoMatch(referenceFiles, queriesFiles[0], queryNum, matchNumsA,
                     listA);
         }
         outputBuffer.append("\t");
-        if (listB.size() == 1 || uniqueMatch) {
-            outputMatch(referenceFiles, queriesFiles[1], queryNum, matchNumB,
+        if (outputMatches || listB.size() == 1) {
+            outputMatch(referenceFiles, queriesFiles[1], queryNum, matchNumsB,
                     listB);
 
         } else {
-            outputNoMatch(referenceFiles, queriesFiles[1], queryNum, matchNumB,
+            outputNoMatch(referenceFiles, queriesFiles[1], queryNum, matchNumsB,
                     listB);
         }
         outputBuffer.append("\n");
@@ -258,17 +273,20 @@ public class PairedOutput {
         outputBuffer.append("\t");
         outputBuffer.append(list.size());
         outputBuffer.append("\t");
-        outputBuffer.append(OutputUtil.bytesToChars(queriesFile.bases, charBuf,
-                queryNum * ProgramParameters.queryLength + match.startOffset,
-                match.length), 0, match.length);
+        outputBuffer.append(
+                OutputUtil.bytesToChars(queriesFile.bases, charBuf,
+                        queryNum * ProgramParameters.queryLength
+                                + match.startOffset,
+                        match.length),
+                0, match.length);
         outputBuffer.append("\t");
         outputBuffer.append(match.startOffset);
         outputBuffer.append("\t");
         outputBuffer.append(match.length);
         outputBuffer.append("\t");
         for (int i = 0; i < match.numMismatches; ++i) {
-            outputBuffer.append((int) match.mismatchData[i * 2]
-                    - match.startOffset);
+            outputBuffer.append(
+                    (int) match.mismatchData[i * 2] - match.startOffset);
             outputBuffer.append((char) match.mismatchData[i * 2 + 1]);
             outputBuffer.append(" ");
         }
@@ -283,14 +301,10 @@ public class PairedOutput {
         } else {
             int len = referenceFile.headerStart[wrapper.segmentNum + 1]
                     - referenceFile.headerStart[wrapper.segmentNum];
-            outputBuffer
-                    .append(
-                            OutputUtil
-                                    .bytesToChars(
-                                            referenceFile.headers,
-                                            charBuf,
-                                            referenceFile.headerStart[wrapper.segmentNum],
-                                            len), 0, len);
+            outputBuffer.append(
+                    OutputUtil.bytesToChars(referenceFile.headers, charBuf,
+                            referenceFile.headerStart[wrapper.segmentNum], len),
+                    0, len);
         }
     }
 
@@ -335,14 +349,14 @@ public class PairedOutput {
             boolean forward = false;
             if (segmentNum % 2 == 0) {
                 forward = true;
+                forwardPosition = linkedMatch.referencePosition
+                        + linkedMatch.startOffset
+                        - referenceFile.segmentStart[segmentNum] + 1;
+            } else {
                 forwardPosition = referenceFile.segmentEnd[segmentNum]
                         + linkedMatch.startOffset
                         - linkedMatch.referencePosition
                         - ProgramParameters.queryLength + 1;
-            } else {
-                forwardPosition = linkedMatch.referencePosition
-                        + linkedMatch.startOffset
-                        - referenceFile.segmentStart[segmentNum] + 1;
             }
 
             matches.add(new MatchWrapper(linkedMatch, segmentNum / 2,

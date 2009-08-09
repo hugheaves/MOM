@@ -1,0 +1,33 @@
+#
+# EXAMPLE PARAMETERS FILE FOR PAIRED READS
+# EDIT AS NEEDED
+#
+# These are the required parameters
+# size of each read (aka query sequence)
+s=41
+# number of mismatches
+k=2
+# minimum match length
+q=27
+# search method (only one method supported, currently)
+searchMethod=pairedQueries
+query1=queries1.txt
+query2=queries2.txt
+# reference sequences (1 ... n)
+reference1=reference_chromosome1.txt
+reference2=reference_chromosome2.txt
+# output file name
+output=output.txt
+#
+# These are optional parameters for search sensitivity and performance
+#
+numThreads=4
+seedLength=8
+querySeedInterval=8
+# NOTE: Setting maxMatchesPerQuery to 1000 or less is recommended for most medium to large genomes (> 50MB)
+maxMatchesPerQuery=1000
+# Specify gap parameters for spacing between paired reads
+# pairedReadMinGap=750
+# pairedReadMaxGap=1000
+
+
