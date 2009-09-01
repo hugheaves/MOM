@@ -168,7 +168,8 @@ public class ElandOutput {
                         // referenceFile.segmentEnd[segmentNum])
                         // ++segmentNum
 
-                        if (segmentNum % 2 == 1) {
+						if (!ProgramParameters.forwardStrandOnly
+								&& (segmentNum % 2 == 1)) {
                             reverse = true;
                         }
 
@@ -188,7 +189,12 @@ public class ElandOutput {
                         if (referenceFile.headers.length == 0) {
                             outputLine.append(referenceFile.fileName);
                         } else {
-                            int headerNum = segmentNum / 2;
+							int headerNum;
+							if (ProgramParameters.forwardStrandOnly) {
+								headerNum = segmentNum;
+							} else {
+								headerNum = segmentNum / 2;
+							}
                             int len = referenceFile.headerStart[headerNum + 1]
                                     - referenceFile.headerStart[headerNum];
                             outputLine.append(OutputUtil.bytesToChars(

@@ -58,6 +58,7 @@ public class ProgramParameters {
     public static final String PARAM_MAX_MATCHES_PER_QUERY = "maxMatchesPerQuery";
     public static final String PARAM_PAIRED_READ_MIN_GAP = "pairedReadMinGap";
     public static final String PARAM_PAIRED_READ_MAX_GAP = "pairedReadMaxGap";
+    public static final String PARAM_FORWARD_STRAND_ONLY = "forwardStrandOnly";
 
     private static HashMap<String, ParamMetaData> mainParameters = new HashMap<String, ParamMetaData>();
 
@@ -98,6 +99,9 @@ public class ProgramParameters {
         mainParameters.put(PARAM_PAIRED_READ_MIN_GAP, new ParamMetaData(
                 PARAM_PAIRED_READ_MIN_GAP, "paired read minimum gap size",
                 false, ParamMetaData.Type.INTEGER));
+        mainParameters.put(PARAM_FORWARD_STRAND_ONLY, new ParamMetaData(
+        		PARAM_FORWARD_STRAND_ONLY, "match on forward strand only",
+                false, ParamMetaData.Type.BOOLEAN));
     }
 
     private static ParamMetaData referenceParam = new ParamMetaData(
@@ -128,6 +132,7 @@ public class ProgramParameters {
     public static boolean pairedReads;
     public static int pairedReadMaxGap;
     public static int pairedReadMinGap;
+    public static boolean forwardStrandOnly;
  
     public static boolean loadFromCommandLine(String[] args)
             throws IOException {
@@ -296,6 +301,13 @@ public class ProgramParameters {
                         PARAM_PAIRED_READ_MIN_GAP));
             } else {
                 pairedReadMinGap = -1;
+            }
+
+            if (properties.getProperty(PARAM_FORWARD_STRAND_ONLY) != null) {
+                forwardStrandOnly = Boolean.parseBoolean(properties
+                        .getProperty(PARAM_FORWARD_STRAND_ONLY));
+            } else {
+            	forwardStrandOnly = false;
             }
 
         }

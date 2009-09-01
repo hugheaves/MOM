@@ -1,4 +1,4 @@
-Readme File for Pre-release Maximal Oligo Mapping (MOM) Software v0.5
+Readme File for Maximum Oligo Mapping (MOM) Software v0.6
 
 Contents
 ======================
@@ -21,11 +21,12 @@ Version    Date	       Description
 0.3RC      06/01/2009  Paired read initial implementation, improved output format compatibility with Eland
 0.4        07/15/2009  Improved performance when using a large number of small reference sequences.
 0.5        02/11/2009  Fixed issue with output locations in paired read implementation
+0.6        07/10/2009  Added forwardStrandOnly parameter
 
 2. System Requirements
 ======================
 
-The Maximal Oligo Mapping software will run on any hardware and operating system that supports a JavaSE JRE 1.6 or later. Although the software will work with a 32bit JRE for small datasets, a 64bit JRE is recommended for maximum performance and the ability to utilize more memory. A minimum of 16GB RAM recommended for Human genome searches.
+The Maximum Oligo Mapping software will run on any hardware and operating system that supports a JavaSE JRE 1.6 or later. Although the software will work with a 32bit JRE for small datasets, a 64bit JRE is recommended for maximum performance and the ability to utilize more memory. A minimum of 16GB RAM recommended for Human genome searches.
 
 3. Packaging
 ======================
@@ -124,6 +125,11 @@ Parameter: output
 Description: The name of the output file
 Required: Yes
 Valid Values: Any valid filename
+
+Parameter: forwardStrandOnly
+Description: If set to true, only matches on the forward strand will be returned. (Matches on the reverse complement will be ignored)
+Required: No
+Valid Values: true / false
 
 6. Input Format
 ======================

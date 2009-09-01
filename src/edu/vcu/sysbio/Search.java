@@ -115,8 +115,8 @@ public class Search {
         }
         InputFile referenceFile = referenceFiles.get(i);
         if (referenceFile == null) {
-            referenceFile = new InputFile(
-                    ProgramParameters.referenceFileNames.get(i), i, true, true);
+            referenceFile = new InputFile(ProgramParameters.referenceFileNames
+                    .get(i), i, !ProgramParameters.forwardStrandOnly, true);
             referenceFile.loadFile();
             referenceFiles.set(i, referenceFile);
         } else {
@@ -333,7 +333,7 @@ public class Search {
     }
 
     public static void main(String[] args) {
-        System.out.println("Maximum Oligonucleotide Mapping - Version 0.5");
+        System.out.println("Maximum Oligonucleotide Mapping - Version 0.6");
         try {
 
             if (ProgramParameters.loadFromCommandLine(args)) {

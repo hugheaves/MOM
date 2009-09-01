@@ -29,5 +29,7 @@ maxMatchesPerQuery=1000
 # Specify gap parameters for spacing between paired reads
 # pairedReadMinGap=750
 # pairedReadMaxGap=1000
+# Match on only the forward strand if true
+forwardStrandOnly=false
 
 

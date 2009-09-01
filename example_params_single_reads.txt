@@ -25,3 +25,5 @@ seedLength=8
 querySeedInterval=8
 # NOTE: Setting maxMatchesPerQuery to 1000 or less is recommended for most medium to large genomes (> 50MB)
 maxMatchesPerQuery=1000
+# Match on only the forward strand if true
+forwardStrandOnly=false
