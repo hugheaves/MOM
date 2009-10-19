@@ -2,7 +2,10 @@
  * Copyright (c) 2008 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ProgramParameters.java,v $
- * Revision 1.5  2009/03/31 15:47:28  hugh
+ * Revision 1.6  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.5  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.4  2008-08-13 19:08:46  hugh
@@ -47,25 +50,22 @@ public class ProgramParameters {
     public static final String PARAM_NUM_THREADS = "numThreads";
     public static final String PARAM_OUTPUT_FILE = "output";
     public static final String PARAM_QUERIES_FILE = "query";
+    public static final String PARAM_PAIRED_QUERIES_FILE = "pairedQuery";
     public static final String PARAM_REFERENCE_FILE = "reference";
     public static final String PARAM_SEARCH_METHOD = "searchMethod";
     public static final String PARAM_KMER_LENGTH = "seedLength";
     public static final String PARAM_REFERENCE_KMER_INTERVAL = "referenceSeedInterval";
     public static final String PARAM_QUERY_KMER_INTERVAL = "querySeedInterval";
     public static final String PARAM_MAX_MATCHES_PER_QUERY = "maxMatchesPerQuery";
-    public static final String PARAM_PAIRED_READ_MODE = "pairedReads";
     public static final String PARAM_PAIRED_READ_MIN_GAP = "pairedReadMinGap";
     public static final String PARAM_PAIRED_READ_MAX_GAP = "pairedReadMaxGap";
 
-    private static HashMap<String, ParamMetaData> mainParameters = new HashMap();
+    private static HashMap<String, ParamMetaData> mainParameters = new HashMap<String, ParamMetaData>();
 
     static {
         mainParameters.put(PARAM_MAX_MISMATCHES, new ParamMetaData(
                 PARAM_MAX_MISMATCHES, "maximum number of mismatches", true,
                 ParamMetaData.Type.INTEGER));
-        mainParameters.put(PARAM_QUERIES_FILE, new ParamMetaData(
-                PARAM_QUERIES_FILE, "filename containing queries", true,
-                ParamMetaData.Type.INPUT_FILE));
         mainParameters.put(PARAM_MIN_MATCH_LENGTH, new ParamMetaData(
                 PARAM_MIN_MATCH_LENGTH, "minimum match length", true,
                 ParamMetaData.Type.INTEGER));
@@ -93,9 +93,6 @@ public class ProgramParameters {
         mainParameters.put(PARAM_MAX_MATCHES_PER_QUERY, new ParamMetaData(
                 PARAM_MAX_MATCHES_PER_QUERY, "max matches per query", false,
                 ParamMetaData.Type.INTEGER));
-        mainParameters.put(PARAM_PAIRED_READ_MODE, new ParamMetaData(
-                PARAM_PAIRED_READ_MODE, "paired read mode", false,
-                ParamMetaData.Type.BOOLEAN));
         mainParameters.put(PARAM_PAIRED_READ_MAX_GAP, new ParamMetaData(
                 PARAM_PAIRED_READ_MAX_GAP, "paired read maximum gap size",
                 false, ParamMetaData.Type.BOOLEAN));
@@ -108,17 +105,21 @@ public class ProgramParameters {
             PARAM_REFERENCE_FILE, "filename containing reference data", false,
             ParamMetaData.Type.INPUT_FILE);
 
+    private static ParamMetaData queryParam = new ParamMetaData(
+            PARAM_QUERIES_FILE, "filename containing query sequences", false,
+            ParamMetaData.Type.INPUT_FILE);
+
     public static final String SEARCH_METHOD_INDEX_QUERIES = "indexQueries";
     public static final String SEARCH_METHOD_INDEX_REFERENCE = "indexReference";
-    public static final String SEARCH_METHOD_INDEX_BOTH = "indexBoth";
-    public static final String SEARCH_METHOD_GEN_READS = "genReads";
+    public static final String SEARCH_METHOD_PAIRED_QUERIES = "pairedQueries";
 
     public static int minMatchLength;
     public static int queryLength;
     public static int numThreads;
     public static int maxMismatches;
-    public static String queryFileName;
-    public static List<String> referenceFileNames = new ArrayList();
+    public static List<String> queryFileNames = new ArrayList<String>();
+    public static String pairedQueryFileName;
+    public static List<String> referenceFileNames = new ArrayList<String>();
     public static String outputFileName;
     public static String searchMethod;
     public static int kmerLength;
@@ -174,7 +175,7 @@ public class ProgramParameters {
         if (metaData.getType() == ParamMetaData.Type.INPUT_FILE) {
             File file = new File(paramValue);
             if (!file.canRead()) {
-                System.out.println("Query file " + paramValue + " not found.");
+                System.out.println("Input file " + paramValue + " not found.");
                 return false;
             }
         } else if (metaData.getType() == ParamMetaData.Type.OUTPUT_FILE) {
@@ -230,21 +231,17 @@ public class ProgramParameters {
             maxMismatches = Integer.parseInt(properties
                     .getProperty(PARAM_MAX_MISMATCHES));
 
-            queryFileName = properties.getProperty(PARAM_QUERIES_FILE);
-
             outputFileName = properties.getProperty(PARAM_OUTPUT_FILE);
 
             searchMethod = properties.getProperty(PARAM_SEARCH_METHOD);
             if (!SEARCH_METHOD_INDEX_QUERIES.equals(searchMethod)
                     && !SEARCH_METHOD_INDEX_REFERENCE.equals(searchMethod)
-                    && !SEARCH_METHOD_INDEX_BOTH.equals(searchMethod)
-                    && !SEARCH_METHOD_GEN_READS.equals(searchMethod)) {
+                    && !SEARCH_METHOD_PAIRED_QUERIES.equals(searchMethod)) {
                 System.out.println("Invalid " + PARAM_SEARCH_METHOD
                         + " parameter specified. Specify one of:");
                 System.out.println(" " + SEARCH_METHOD_INDEX_QUERIES);
                 System.out.println(" " + SEARCH_METHOD_INDEX_REFERENCE);
-                System.out.println(" " + SEARCH_METHOD_INDEX_BOTH);
-                System.out.println(" " + SEARCH_METHOD_GEN_READS);
+                System.out.println(" " + SEARCH_METHOD_PAIRED_QUERIES);
                 ++errorCount;
             }
 
@@ -287,13 +284,6 @@ public class ProgramParameters {
                 maxMatchesPerQuery = -1;
             }
 
-            if (properties.getProperty(PARAM_PAIRED_READ_MODE) != null) {
-                pairedReads = Boolean.parseBoolean(properties
-                        .getProperty(PARAM_PAIRED_READ_MODE));
-            } else {
-                pairedReads = false;
-            }
-
             if (properties.getProperty(PARAM_PAIRED_READ_MAX_GAP) != null) {
                 pairedReadMaxGap = Integer.parseInt(properties
                         .getProperty(PARAM_PAIRED_READ_MAX_GAP));
@@ -310,6 +300,26 @@ public class ProgramParameters {
 
         }
 
+        if (validateParameter(properties, queryParam)) {
+            if (properties.getProperty(PARAM_QUERIES_FILE) != null)
+                queryFileNames.add(properties.getProperty(PARAM_QUERIES_FILE));
+        } else {
+            ++errorCount;
+        }
+
+        int i = 1;
+        String propName = PARAM_QUERIES_FILE + i;
+        while ((properties.getProperty(propName) != null)) {
+            queryParam.setName(propName);
+            if (validateParameter(properties, queryParam)) {
+                queryFileNames.add(properties.getProperty(propName));
+            } else {
+                ++errorCount;
+            }
+            ++i;
+            propName = PARAM_QUERIES_FILE + i;
+        }
+
         if (validateParameter(properties, referenceParam)) {
             if (properties.getProperty(PARAM_REFERENCE_FILE) != null)
                 referenceFileNames.add(properties
@@ -318,8 +328,8 @@ public class ProgramParameters {
             ++errorCount;
         }
 
-        int i = 1;
-        String propName = PARAM_REFERENCE_FILE + i;
+        i = 1;
+        propName = PARAM_REFERENCE_FILE + i;
         while ((properties.getProperty(propName) != null)) {
             referenceParam.setName(propName);
             if (validateParameter(properties, referenceParam)) {
@@ -333,6 +343,11 @@ public class ProgramParameters {
 
         if (referenceFileNames.size() == 0) {
             System.out.println("Must specify at least one reference file");
+            ++errorCount;
+        }
+
+        if (queryFileNames.size() == 0) {
+            System.out.println("Must specify at least one query file");
             ++errorCount;
         }
 

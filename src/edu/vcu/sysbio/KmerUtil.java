@@ -1,6 +1,9 @@
 /*
  * $Log: KmerUtil.java,v $
- * Revision 1.5  2009/03/31 15:47:28  hugh
+ * Revision 1.6  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.5  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.4  2008-09-27 17:08:38  hugh
@@ -39,7 +42,7 @@ import java.util.logging.Logger;
  * 
  * @author Hugh
  * @since Feb 19, 2008
- * @version $Revision: 1.5 $
+ * @version $Revision: 1.6 $
  * 
  */
 public class KmerUtil {
@@ -161,7 +164,7 @@ public class KmerUtil {
         byte ch;
         int currentLength = 0;
         long kmer = 0;
-        int dataLength = end - start;
+       // int dataLength = end - start;
 
         for (int i = start; i < end; ++i) {
             // if (i % (dataLength / 99) == 0) {

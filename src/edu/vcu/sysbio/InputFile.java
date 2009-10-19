@@ -1,6 +1,9 @@
 /*
  * $Log: InputFile.java,v $
- * Revision 1.4  2009/03/31 15:47:28  hugh
+ * Revision 1.5  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.4  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.3  2008-08-13 19:08:46  hugh
@@ -74,6 +77,7 @@ public class InputFile {
     private static final int READ_BUFFER_SIZE = 65536 * 4;
     public static final byte NOMATCH_CHAR = 'X';
     public static final byte WILDCARD_CHAR = 'N';
+    public static final int MAX_HEADER_SIZE = 65536;
 
     // basic information about file
     public String fileName;
@@ -99,12 +103,21 @@ public class InputFile {
             // 112..127
             0, 0, 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 0, 0, 0, 0, 0, 0 };
 
+    // size of base data
+    public int basesSize;
     // base data
     public byte[] bases;
+    // number of base data segments
+    public int numSegments;
     // offsets of start of each data segments within the "data" array
     public int[] segmentStart;
     // offsets of end of each data segment within the "data" array
     public int[] segmentEnd;
+
+    // number of fasta headers (if any)
+    public int numHeaders;
+    // size of fasta headers in bytes (if any)
+    public int headersSize;
     // fasta headers (if any)
     public byte[] headers;
     // offsets of the start of each fasta header within the "headers" array
@@ -112,9 +125,6 @@ public class InputFile {
 
     // is this RNA data?
     boolean rnaData;
-
-    // number of base segments
-    public int numSegments;
 
     /**
      * @param fileName
@@ -132,174 +142,212 @@ public class InputFile {
 
     public void loadFile() {
         try {
-            int fileLength;
-            byte[] fileBuffer = new byte[READ_BUFFER_SIZE];
-            int bufferPos = 0;
-            int bytesRead = 0;
-
-            System.out.println("Reading file " + fileName + ", first pass");
-
-            File file = new File(fileName);
-            fileLength = (int) file.length();
-
-            InputStream is = new BufferedInputStream(new FileInputStream(file));
-
-            // InputStream is = new FileInputStream(file);
-
-            byte ch = 0;
-
-            int basesPos = 0;
-            int headerPos = 0;
-            int numHeaders = 0;
-            int bytesProcessed = 0;
-            int readLength = 0;
-            boolean inHeader = false;
-
-            numSegments = 0;
-
-            // parse (to obtain data sizes) and validate input file
-            while (bytesProcessed < fileLength) {
-                bytesProcessed++;
-                if (bufferPos >= bytesRead) {
-                    bytesRead = is.read(fileBuffer);
-                    bufferPos = 0;
-                }
-                ch = fileBuffer[bufferPos++];
-
-                if (!inHeader) {
-                    if (validBaseChars[ch] > 0) {
-                        ++basesPos;
-                        if (ch == 'u' || ch == 'U') {
-                            rnaData = true;
-                        }
-                        ++readLength;
-                    } else if (ch == 13 || ch == 10) {
-                        if (!referenceFile
-                                && readLength != ProgramParameters.queryLength) {
-                            throw new SearchException(
-                                    "Invalid length query in file  ["
-                                            + fileName + "] at byte "
-                                            + bytesProcessed);
-                        }
-                        readLength = 0;
-                    } else if (ch == '>') {
-                        readLength =  0;
-                        inHeader = true;
-                        if (referenceFile && numHeaders > 0) {
-                            ++numSegments;
-                            if (reverseData) {
-                                ++numSegments;
-                            }
-                        }
-                    } else {
-                        throw new SearchException("Invalid character '"
-                                + (char) ch + "' in file [" + fileName
-                                + "] at byte " + bytesProcessed);
-                    }
-                } else {
-                    if (ch != 10 && ch != 13) {
-                        ++headerPos;
-                    } else {
-                        inHeader = false;
-                        ++numHeaders;
-                    }
-                }
-            }
-            is.close();
-
-            ++numSegments;
-            if (reverseData) {
-                ++numSegments;
-            }
-
-            // allocate space for the data
-            if (reverseData) {
-                bases = new byte[basesPos * 2
-                        + ((numSegments + 1) * ProgramParameters.queryLength)];
-            } else {
-
-                bases = new byte[basesPos
-                        + ((numSegments + 1) * ProgramParameters.queryLength)];
-
-            }
-            segmentStart = new int[numSegments];
-            segmentEnd = new int[numSegments];
-            headers = new byte[headerPos];
-            headerStart = new int[numHeaders + 1];
-
-            // read the input file into our data structures
-            basesPos = 0;
-            numSegments = 0;
-            headerPos = 0;
-            numHeaders = 0;
-            bytesProcessed = 0;
-            inHeader = false;
-
-            // pad the first part of the array with "no match" characters
-            Arrays.fill(bases, 0, ProgramParameters.queryLength, NOMATCH_CHAR);
-            basesPos += ProgramParameters.queryLength;
-            segmentStart[0] = basesPos;
-
-            System.out.println("Reading file " + fileName + ", second pass");
-            is = new BufferedInputStream(new FileInputStream(file));
-
-            while (bytesProcessed < fileLength) {
-                bytesProcessed++;
-                if (bufferPos >= bytesRead) {
-                    bytesRead = is.read(fileBuffer);
-                    bufferPos = 0;
-                }
-                ch = fileBuffer[bufferPos++];
-
-                if (!inHeader) {
-                    if (validBaseChars[ch] > 0) {
-                        bases[basesPos++] = validBaseChars[ch];
-                    } else if (ch == 13 || ch == 10) {
-
-                    } else if (ch == '>') {
-                        inHeader = true;
-                        if (referenceFile && numHeaders > 0) {
-                            segmentEnd[numSegments] = basesPos;
-                            Arrays.fill(bases, basesPos, basesPos
-                                    + ProgramParameters.queryLength,
-                                    NOMATCH_CHAR);
-                            basesPos += ProgramParameters.queryLength;
-                            segmentStart[++numSegments] = basesPos;
-                            if (reverseData) {
-                                basesPos = reverseReference(numSegments++,
-                                        basesPos);
-                                segmentStart[numSegments] = basesPos;
-                            }
-                        }
-                    }
-                } else {
-                    if (ch != 10 && ch != 13) {
-                        headers[headerPos++] = ch;
-                    } else {
-                        inHeader = false;
-                        headerStart[++numHeaders] = headerPos;
-                    }
-                }
-            }
-
-            is.close();
-
-            segmentEnd[numSegments] = basesPos;
-            Arrays.fill(bases, basesPos, basesPos
-                    + ProgramParameters.queryLength, NOMATCH_CHAR);
-            basesPos += ProgramParameters.queryLength;
-            if (reverseData) {
-                segmentStart[++numSegments] = basesPos;
-                basesPos = reverseReference(numSegments, basesPos);
-            }
-
-            ++numSegments;
-
+            parseFile();
+            readFile();
         } catch (FileNotFoundException e) {
             throw new SearchException(e);
         } catch (IOException e) {
             throw new SearchException(e);
         }
+    }
+
+    public void reloadFile() {
+        try {
+            if (basesSize == 0) {
+                throw new SearchException("File not loaded");
+            }
+            readFile();
+        } catch (FileNotFoundException e) {
+            throw new SearchException(e);
+        } catch (IOException e) {
+            throw new SearchException(e);
+        }
+    }
+
+    public void parseFile() throws IOException {
+
+        System.out.println("Reading file " + fileName + ", parsing pass");
+
+        byte[] fileBuffer = new byte[READ_BUFFER_SIZE];
+        int bufferPos = 0;
+        int bytesRead = 0;
+
+        File file = new File(fileName);
+        int fileLength = (int) file.length();
+        InputStream is = new BufferedInputStream(new FileInputStream(file));
+
+        byte ch = 0;
+        int basesPos = 0;
+        int headerPos = 0;
+        int bytesProcessed = 0;
+        int readLength = 0;
+        int headerLength = 0;
+        boolean inHeader = false;
+
+        // parse (to obtain data sizes) and validate input file
+        while (bytesProcessed < fileLength) {
+            bytesProcessed++;
+            if (bufferPos >= bytesRead) {
+                bytesRead = is.read(fileBuffer);
+                bufferPos = 0;
+            }
+            ch = fileBuffer[bufferPos++];
+
+            if (!inHeader) {
+                if (validBaseChars[ch] > 0) {
+                    ++basesPos;
+                    if (ch == 'u' || ch == 'U') {
+                        rnaData = true;
+                    }
+                    ++readLength;
+                } else if (ch == 13 || ch == 10) {
+                    if (!referenceFile
+                            && readLength != ProgramParameters.queryLength) {
+                        throw new SearchException(
+                                "Invalid length query in file  [" + fileName
+                                        + "] at byte " + bytesProcessed);
+                    }
+                    readLength = 0;
+                } else if (ch == '>') {
+                    readLength = 0;
+                    inHeader = true;
+                    headerLength = 0;
+
+                    if (referenceFile && numHeaders > 0) {
+                        ++numSegments;
+                        if (reverseData) {
+                            ++numSegments;
+                        }
+                    }
+                } else {
+                    throw new SearchException("Invalid character '" + (char) ch
+                            + "' in file [" + fileName + "] at byte "
+                            + bytesProcessed);
+                }
+            } else {
+                if (ch != 10 && ch != 13) {
+                    ++headerLength;
+                    if (headerLength <= MAX_HEADER_SIZE) {
+                        ++headerPos;
+                    } else if (headerLength == MAX_HEADER_SIZE + 1) {
+                        System.out.println("Warning: Truncating Fasta header #"
+                                + numHeaders + " in file " + fileName
+                                + " to length " + MAX_HEADER_SIZE);
+                    }
+                } else {
+                    inHeader = false;
+                    ++numHeaders;
+                }
+            }
+        }
+        is.close();
+
+        ++numSegments;
+        if (reverseData) {
+            ++numSegments;
+        }
+
+        // calculate space for the data
+        if (reverseData) {
+            basesSize = basesPos * 2
+                    + ((numSegments + 1) * ProgramParameters.queryLength);
+        } else {
+            basesSize = basesPos
+                    + ((numSegments + 1) * ProgramParameters.queryLength);
+        }
+
+        headersSize = headerPos;
+
+    }
+
+    private void readFile() throws FileNotFoundException, IOException {
+
+        System.out.println("Reading file " + fileName + ", data load pass");
+
+        byte ch;
+        int basesPos = 0;
+        int bufferPos = 0;
+        int bytesRead = 0;
+        int headerPos = 0;
+        int bytesProcessed = 0;
+        int headerCount = 0;
+        int segmentCount = 0;
+        boolean inHeader = false;
+        int headerLength = 0;
+        byte[] fileBuffer = new byte[READ_BUFFER_SIZE];
+
+        File file = new File(fileName);
+        int fileLength = (int) file.length();
+        InputStream is = new BufferedInputStream(new FileInputStream(file));
+
+        // allocate space for file data
+        segmentStart = new int[numSegments];
+        segmentEnd = new int[numSegments];
+        headers = new byte[headersSize];
+        headerStart = new int[numHeaders + 1];
+        bases = new byte[basesSize];
+
+        // pad the first part of the array with "no match" characters
+        Arrays.fill(bases, 0, ProgramParameters.queryLength, NOMATCH_CHAR);
+        basesPos += ProgramParameters.queryLength;
+        segmentStart[0] = basesPos;
+
+        is = new BufferedInputStream(new FileInputStream(file));
+
+        while (bytesProcessed < fileLength) {
+            bytesProcessed++;
+            if (bufferPos >= bytesRead) {
+                bytesRead = is.read(fileBuffer);
+                bufferPos = 0;
+            }
+            ch = fileBuffer[bufferPos++];
+
+            if (!inHeader) {
+                if (validBaseChars[ch] > 0) {
+                    bases[basesPos++] = validBaseChars[ch];
+                } else if (ch == 13 || ch == 10) {
+                    // do nothing
+                } else if (ch == '>') {
+                    inHeader = true;
+                    headerLength = 0;
+                    if (referenceFile && headerCount > 0) {
+                        segmentEnd[segmentCount] = basesPos;
+                        Arrays.fill(bases, basesPos, basesPos
+                                + ProgramParameters.queryLength, NOMATCH_CHAR);
+                        basesPos += ProgramParameters.queryLength;
+                        segmentStart[++segmentCount] = basesPos;
+                        if (reverseData) {
+                            basesPos = reverseReference(segmentCount++,
+                                    basesPos);
+                            segmentStart[segmentCount] = basesPos;
+                        }
+                    }
+                }
+            } else {
+                if (ch != 10 && ch != 13) {
+                    ++headerLength;
+                    if (headerLength <= MAX_HEADER_SIZE) {
+                        headers[headerPos++] = ch;
+                    }
+                } else {
+                    inHeader = false;
+                    headerStart[++headerCount] = headerPos;
+                }
+            }
+        }
+
+        is.close();
+
+        segmentEnd[segmentCount] = basesPos;
+        Arrays.fill(bases, basesPos, basesPos + ProgramParameters.queryLength,
+                NOMATCH_CHAR);
+        basesPos += ProgramParameters.queryLength;
+        if (reverseData) {
+            segmentStart[++segmentCount] = basesPos;
+            basesPos = reverseReference(segmentCount, basesPos);
+        }
+
+        ++segmentCount;
     }
 
     private int reverseReference(int numSegments, int dataPos) {

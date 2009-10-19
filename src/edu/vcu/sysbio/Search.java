@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: Search.java,v $
- * Revision 1.7  2009/04/10 17:49:39  hugh
+ * Revision 1.8  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.7  2009-04-10 17:49:39  hugh
  * Minor bug fixes.
  *
  * Revision 1.6  2009-03-31 15:47:28  hugh
@@ -53,15 +56,8 @@ package edu.vcu.sysbio;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.longs.LongSets;
-
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -76,11 +72,12 @@ import java.util.logging.Logger;
  * 
  */
 public class Search {
+    @SuppressWarnings("unused")
     private static Logger log = Logger.getLogger(Search.class.toString());
 
-    private Match[] results;
-
     private ExecutorService executor;
+
+    ArrayList<InputFile> referenceFiles = new ArrayList<InputFile>();
 
     public void search() throws SearchException {
         System.out.println("Using kmer length of "
@@ -103,6 +100,9 @@ public class Search {
         } else if (ProgramParameters.SEARCH_METHOD_INDEX_REFERENCE
                 .equals(ProgramParameters.searchMethod)) {
             indexReferenceSearch();
+        } else if (ProgramParameters.SEARCH_METHOD_PAIRED_QUERIES
+                .equals(ProgramParameters.SEARCH_METHOD_PAIRED_QUERIES)) {
+            pairedReadSearch();
         }
 
         TimerEvent.printTotals();
@@ -110,17 +110,25 @@ public class Search {
 
     private InputFile loadReferenceFile(int i) {
         TimerEvent.EVENT_LOAD_REFERENCE_FILE.start();
-        InputFile referenceFile = new InputFile(
-                ProgramParameters.referenceFileNames.get(i), i, true, true);
-        referenceFile.loadFile();
+        while (referenceFiles.size() <= i) {
+            referenceFiles.add(null);
+        }
+        InputFile referenceFile = referenceFiles.get(i);
+        if (referenceFile == null) {
+            referenceFile = new InputFile(ProgramParameters.referenceFileNames
+                    .get(i), i, true, true);
+            referenceFile.loadFile();
+            referenceFiles.set(i, referenceFile);
+        } else {
+            referenceFile.reloadFile();
+        }
         TimerEvent.EVENT_LOAD_REFERENCE_FILE.stop();
         return referenceFile;
     }
 
-    private InputFile loadQueriesFile() {
+    private InputFile loadQueriesFile(String fileName) {
         TimerEvent.EVENT_LOAD_QUERY_FILE.start();
-        InputFile queriesFile = new InputFile(ProgramParameters.queryFileName,
-                0, false, false);
+        InputFile queriesFile = new InputFile(fileName, 0, false, false);
         queriesFile.loadFile();
         TimerEvent.EVENT_LOAD_QUERY_FILE.stop();
 
@@ -160,18 +168,22 @@ public class Search {
     }
 
     private void indexReferenceSearch() {
-        List<InputFile> referenceFiles = new ArrayList();
 
         int[] checkedPositions;
 
-        InputFile queriesFile = loadQueriesFile();
+        InputFile queriesFile = loadQueriesFile(ProgramParameters.queryFileNames
+                .get(0));
 
-        results = new Match[queriesFile.bases.length
+        Match[] results = new Match[queriesFile.bases.length
                 / ProgramParameters.queryLength + 1];
+        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches + 1][];
+        for (int i = 0; i < mismatchCounts.length; ++i) {
+            mismatchCounts[i] = new char[queriesFile.bases.length
+                    / ProgramParameters.queryLength + 1];
+        }
 
         for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
             InputFile referenceFile = loadReferenceFile(i);
-            referenceFiles.add(referenceFile);
             KmerIndex referenceIndex = indexReferenceFile(referenceFile);
 
             checkedPositions = null;
@@ -181,7 +193,7 @@ public class Search {
             TimerEvent.EVENT_SEARCH_QUERIES.start();
 
             QueriesAligner aligner = new QueriesAligner(queriesFile,
-                    referenceIndex, results, checkedPositions);
+                    referenceIndex, results, mismatchCounts, checkedPositions);
             QueriesAligner.resetSegmentCount();
 
             try {
@@ -196,30 +208,36 @@ public class Search {
 
         executor.shutdown();
 
-        ElandOutput.processResults(results, queriesFile, referenceFiles);
+        ElandOutput.outputResults(results, mismatchCounts, queriesFile,
+                referenceFiles);
 
     }
 
     private void indexQueriesSearch() {
-        List<InputFile> referenceFiles = new ArrayList();
 
-        InputFile queriesFile = loadQueriesFile();
+        InputFile queriesFile = loadQueriesFile(ProgramParameters.queryFileNames
+                .get(0));
 
         KmerIndex queriesIndex = indexQueriesFile(queriesFile);
 
-        results = new Match[queriesFile.bases.length
+        Match[] results = new Match[queriesFile.bases.length
                 / ProgramParameters.queryLength + 1];
+        char[][] mismatchCounts = new char[ProgramParameters.maxMismatches + 1][];
+        for (int i = 0; i < mismatchCounts.length; ++i) {
+            mismatchCounts[i] = new char[queriesFile.bases.length
+                    / ProgramParameters.queryLength + 1];
+        }
+
         LongSet hits = LongSets.synchronize(new LongOpenHashSet());
 
         for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
             InputFile referenceFile = loadReferenceFile(i);
 
             TimerEvent.EVENT_SEARCH_REFERENCE.start();
-            referenceFiles.add(referenceFile);
 
             ReferenceAligner.resetSegmentCount();
             ReferenceAligner aligner = new ReferenceAligner(referenceFile,
-                    queriesIndex, results, hits);
+                    queriesIndex, results, mismatchCounts, hits);
 
             Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
                     referenceFile, aligner);
@@ -237,12 +255,81 @@ public class Search {
 
         executor.shutdown();
 
-        ElandOutput.processResults(results, queriesFile, referenceFiles);
+        ElandOutput.outputResults(results, mismatchCounts, queriesFile,
+                referenceFiles);
+
+    }
+
+    public void pairedReadSearch() {
+        InputFile[] queriesFiles = new InputFile[2];
+        LinkedMatch[][] results = new LinkedMatch[2][];
+        LongSet hits = LongSets.synchronize(new LongOpenHashSet());
+        char[][][] mismatchCounts = new char[2][ProgramParameters.maxMismatches + 1][];
+
+        for (int fileNum = 0; fileNum < 2; ++fileNum) {
+            queriesFiles[fileNum] = loadQueriesFile(ProgramParameters.queryFileNames
+                    .get(fileNum));
+        }
+
+        if (queriesFiles[0].basesSize != queriesFiles[1].basesSize) {
+            throw new SearchException(
+                    "Queries files do not contain equal number of queries");
+        }
+
+        for (int fileNum = 0; fileNum < 2; ++fileNum) {
+            results[fileNum] = new LinkedMatch[queriesFiles[fileNum].bases.length
+                    / ProgramParameters.queryLength + 1];
+        }
+
+        for (int fileNum = 0; fileNum < 2; ++fileNum) {
+            for (int j = 0; j < mismatchCounts.length; ++j) {
+                mismatchCounts[fileNum][j] = new char[queriesFiles[0].bases.length
+                        / ProgramParameters.queryLength + 1];
+            }
+        }
+
+        for (int fileNum = 0; fileNum < 2; ++fileNum) {
+//            if (fileNum > 1) {
+//                for (int i = 0; i < mismatchCounts.length; ++i) {
+//                    Arrays.fill(mismatchCounts[i], (char) 0);
+//                }
+//            }
+
+            KmerIndex queriesIndex = indexQueriesFile(queriesFiles[fileNum]);
+
+            for (int i = 0; i < ProgramParameters.referenceFileNames.size(); ++i) {
+                InputFile referenceFile = loadReferenceFile(i);
+
+                TimerEvent.EVENT_SEARCH_REFERENCE.start();
+
+                ReferenceAlignerMulti.resetSegmentCount();
+                ReferenceAlignerMulti aligner = new ReferenceAlignerMulti(
+                        referenceFile, queriesIndex, results[fileNum],
+                        mismatchCounts[fileNum], hits);
+
+                Collection<Callable<Object>> tasks = KmerUtil.buildTasks(
+                        referenceFile, aligner);
+
+                try {
+                    executor.invokeAll(tasks);
+                } catch (InterruptedException e) {
+                    System.out.println("Interrupted error");
+                }
+
+                referenceFile.clearData();
+                hits.clear();
+                TimerEvent.EVENT_SEARCH_REFERENCE.stop();
+            }
+        }
+        executor.shutdown();
+
+        PairedOutput.processResults(results, mismatchCounts, queriesFiles,
+                referenceFiles);
 
     }
 
     public static void main(String[] args) {
-        System.out.println("Maximum Oligonucleotide Mapping - Version 0.2");
+        System.out.println("Maximum Oligonucleotide Mapping - Version 0.4");
         try {
 
             if (ProgramParameters.loadFromCommandLine(args)) {

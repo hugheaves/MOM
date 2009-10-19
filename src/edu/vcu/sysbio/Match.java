@@ -1,6 +1,9 @@
 /*
  * $Log: Match.java,v $
- * Revision 1.4  2009/03/31 15:47:28  hugh
+ * Revision 1.5  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.4  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.3  2008-08-13 19:08:46  hugh
@@ -30,38 +33,34 @@ public class Match {
     int length;
     int numMismatches;
     /*
-     * This array stores data on mismatch counts and SNPS.
-     * 
-     * First section of array keeps track of counts of matches for each possible
-     * number of mismatches. (i.e. there were 2 matches with 0 mismatches, 6
-     * matches with one mismatch, 32 matches with two mismatches, etc.) There is
-     * one int in this part of the array for each possible number of mismatches.
-     * 
-     * The second part of the array keeps track of the actual SNP's. There are
-     * two ints for each SNP. The first in is the offset of the SNP from the
-     * beginning of the read. The second int is the char value of the base in
-     * the reference sequence.
-     * 
-     * The total size of the array = Maximum Number of Mismatches * 3 + 1
+     * This array stores data SNPS. There are two bytes for each SNP. The first
+     * in is the offset of the SNP from the beginning of the read. The second
+     * byte is the char value of the base in the reference sequence.
      */
-    int[] mismatchData;
+    final byte[] mismatchData;
 
     public Match() {
-        this.mismatchData = new int[ProgramParameters.maxMismatches * 3 + 1];
+        this.mismatchData = new byte[ProgramParameters.maxMismatches * 2];
     }
 
-    public void setBestMatch(int referenceFile, int referencePosition,
-            int queryPosition, int startOffset, int length, int numMismatches) {
+    public final void setMatchData(int referenceFile, int referencePosition,
+            int queryPosition, int startOffset, int length, int numMismatches,
+            int compareOffset, byte[] reference, int mismatchesOffset,
+            int mismatchOffsets[]) {
+
         this.referenceFile = referenceFile;
-        this.referencePosition = referencePosition;
-        this.queryPosition = queryPosition;
-        this.startOffset = startOffset;
+        this.referencePosition = referencePosition + compareOffset;
+        this.queryPosition = queryPosition + compareOffset;
+        this.startOffset = startOffset - compareOffset;
         this.length = length;
         this.numMismatches = numMismatches;
-        for (int i = 0; i <= ProgramParameters.maxMismatches; ++i) {
-            mismatchData[i] = 0;
+
+        int j = 0;
+        for (int i = 0; i < numMismatches; ++i) {
+            int offset = mismatchOffsets[mismatchesOffset - numMismatches + i];
+            mismatchData[j++] = (byte) (offset - compareOffset + 1);
+            mismatchData[j++] = reference[referencePosition + offset];
         }
-        this.mismatchData[numMismatches] = 1;
     }
 
     public int hashCode() {
@@ -76,4 +75,14 @@ public class Match {
         return false;
     }
 
+    public String toString() {
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("referenceFile = " + referenceFile + ", ");
+        buffer.append("referencePosition = " + referencePosition + ", ");
+        buffer.append("queryPosition = " + queryPosition + ", ");
+        buffer.append("startOffset = " + startOffset + ", ");
+        buffer.append("length = " + length + ", ");
+        buffer.append("numMismatches = " + numMismatches);
+        return buffer.toString();
+    }
 }

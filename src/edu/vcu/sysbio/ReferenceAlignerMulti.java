@@ -1,6 +1,6 @@
 /*
- * $Log: ReferenceAligner.java,v $
- * Revision 1.6  2009/10/19 17:37:03  hugh
+ * $Log: ReferenceAlignerMulti.java,v $
+ * Revision 1.1  2009/10/19 17:37:03  hugh
  * Revised.
  *
  * Revision 1.5  2009-04-10 17:49:39  hugh
@@ -33,7 +33,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
  * @author hugh
  * 
  */
-public class ReferenceAligner extends Aligner implements KmerProcessor {
+public class ReferenceAlignerMulti extends Aligner implements KmerProcessor {
 
     private final KmerIndex queriesIndex;
     private int startPos;
@@ -41,8 +41,9 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
     private static int segmentCount = 0;
     protected final LongSet hits;
 
-    public ReferenceAligner(InputFile referenceFile, KmerIndex queriesIndex,
-            Match[] results, char[][] mismatchCounts, LongSet hits) {
+    public ReferenceAlignerMulti(InputFile referenceFile,
+            KmerIndex queriesIndex, Match[] results, char[][] mismatchCounts,
+            LongSet hits) {
         super(referenceFile.bases, queriesIndex.file.bases,
                 referenceFile.fileNum, results, mismatchCounts);
         this.queriesIndex = queriesIndex;
@@ -67,7 +68,7 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
         if (match == null) {
             synchronized (results) {
                 if (results[queryNum] == null) {
-                    match = results[queryNum] = new Match();
+                    match = results[queryNum] = new LinkedMatch();
                 } else {
                     match = results[queryNum];
                 }
@@ -83,12 +84,14 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
                         longestMatchPosition, longestMatchLength,
                         longestMatchMismatches, compareOffset, reference,
                         longestMatchMismatchesOffset, mismatchOffsets);
-                
+
+                ((LinkedMatch) match).nextMatch = null;
+
                 for (int i = 0; i <= ProgramParameters.maxMismatches; ++i) {
                     mismatchCounts[i][queryNum] = 0;
                 }
                 mismatchCounts[longestMatchMismatches][queryNum] = 1;
-                
+
                 long hit = ((long) referencePosition + (long) compareOffset) << 32;
                 hit += queryPosition + compareOffset;
                 hits.add(hit);
@@ -97,6 +100,17 @@ public class ReferenceAligner extends Aligner implements KmerProcessor {
                 hit += queryPosition + compareOffset;
                 if (hits.add(hit)) {
                     ++mismatchCounts[longestMatchMismatches][queryNum];
+
+                    if (longestMatchMismatches == match.length) {
+                        LinkedMatch newMatch = new LinkedMatch();
+                        newMatch.setMatchData(fileNum, referencePosition,
+                                queryPosition, longestMatchPosition,
+                                longestMatchLength, longestMatchMismatches,
+                                compareOffset, reference,
+                                longestMatchMismatchesOffset, mismatchOffsets);
+                        newMatch.nextMatch = ((LinkedMatch) match).nextMatch;
+                        ((LinkedMatch) match).nextMatch = newMatch;
+                    }
                 }
             }
         }

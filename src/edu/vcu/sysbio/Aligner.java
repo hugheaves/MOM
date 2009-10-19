@@ -1,6 +1,9 @@
 /*
  * $Log: Aligner.java,v $
- * Revision 1.5  2009/03/31 15:47:28  hugh
+ * Revision 1.6  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.5  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.4  2008-08-13 19:08:46  hugh
@@ -19,8 +22,6 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.longs.LongSet;
-
 /**
  * Base class for all alignment functions. Provides basic alignment algorithm in
  * doAlignment() method. Subclasses implement either query on genome index bases
@@ -37,15 +38,17 @@ public abstract class Aligner {
     protected final int fileNum;
     protected final Match[] results;
     protected final int maxTotalMismatches;
+    protected final char[][] mismatchCounts;
 
     public Aligner(byte[] reference, byte[] queries, int fileNum,
-            Match[] results) {
+            Match[] results, char[][] mismatchCounts) {
         this.mismatchOffsets = new int[ProgramParameters.queryLength];
         this.maxMismatches = ProgramParameters.maxMismatches;
         this.reference = reference;
         this.queries = queries;
         this.fileNum = fileNum;
         this.results = results;
+        this.mismatchCounts = mismatchCounts;
         this.maxTotalMismatches = ProgramParameters.queryLength
                 - ProgramParameters.minMatchLength
                 + ProgramParameters.maxMismatches;
@@ -66,7 +69,7 @@ public abstract class Aligner {
 
         if (ProgramParameters.maxMatchesPerQuery != -1
                 && match != null
-                && match.mismatchData[match.numMismatches] >= ProgramParameters.maxMatchesPerQuery) {
+                && mismatchCounts[match.numMismatches][queryNum] >= ProgramParameters.maxMatchesPerQuery) {
             return;
         }
 

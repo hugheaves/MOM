@@ -1,7 +1,10 @@
 /*
  * 
  * $Log: KmerIndex.java,v $
- * Revision 1.3  2009/03/31 15:47:28  hugh
+ * Revision 1.4  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.3  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.2  2008-07-01 15:59:22  hugh
@@ -37,6 +40,7 @@ import java.util.logging.Logger;
  * 
  */
 public class KmerIndex implements KmerProcessor {
+    @SuppressWarnings("unused")
     private static Logger log = Logger.getLogger(KmerIndex.class.toString());
 
     public final InputFile file;

@@ -2,7 +2,10 @@
  * Copyright (c) 2007 Virginia Commonwealth University. All rights reserved.
  * 
  * $Log: ElandOutput.java,v $
- * Revision 1.4  2009/03/31 15:47:28  hugh
+ * Revision 1.5  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.4  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.3  2008-08-13 19:08:46  hugh
@@ -18,19 +21,12 @@
 
 package edu.vcu.sysbio;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArraySet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
-
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Outputs the results of the mapping in Eland format
@@ -39,32 +35,13 @@ import java.util.Set;
  * 
  */
 public class ElandOutput {
-    public static void processResults(Match[] results, InputFile queriesFile,
+    public static final int OUTPUT_BUFFER_SIZE = 65536 * 4;
+
+    public static void outputResults(Match[] resultsByQueryPos,
+            char[][] mismatchCounts, InputFile queriesFile,
             List<InputFile> referenceFiles) {
-
-        // index all results by query location
-        TimerEvent.EVENT_PROCESS_RESULTS.start();
-        // Int2ObjectMap<ObjectSet<Match>> resultsByQueryPos = new
-        // Int2ObjectOpenHashMap<ObjectSet<Match>>();
-        // for (Iterator<Match> i = results.iterator(); i.hasNext();) {
-        // Match currentMatch = i.next();
-        // ObjectSet<Match> matches = resultsByQueryPos
-        // .get(currentMatch.queryPosition);
-        // if (matches == null) {
-        // matches = new ObjectArraySet();
-        // resultsByQueryPos.put(currentMatch.queryPosition, matches);
-        // }
-        // matches.add(currentMatch);
-        // }
-        TimerEvent.EVENT_PROCESS_RESULTS.stop();
-
         TimerEvent.EVENT_WRITE_OUTPUT.start();
-        outputResults(results, queriesFile, referenceFiles);
-        TimerEvent.EVENT_WRITE_OUTPUT.stop();
-    }
 
-    private static void outputResults(Match[] resultsByQueryPos,
-            InputFile queriesFile, List<InputFile> referenceFiles) {
         StringBuilder outputLine = new StringBuilder();
 
         Writer ps;
@@ -72,17 +49,22 @@ public class ElandOutput {
             ps = new BufferedWriter(new FileWriter(
                     ProgramParameters.outputFileName));
 
-            char charBuf[] = new char[1024];
+            char charBuf[] = new char[OUTPUT_BUFFER_SIZE];
 
             int totalMatches = 0;
             int totalUniqueMatches = 0;
             long totalBases = 0;
 
-            for (int queryPosition = queriesFile.segmentStart[0]; queryPosition < queriesFile.segmentEnd[0]; queryPosition += ProgramParameters.queryLength) {
+            // for (int queryPosition = queriesFile.segmentStart[0];
+            // queryPosition < queriesFile.segmentEnd[0]; queryPosition +=
+            // ProgramParameters.queryLength) {
+            int numQueries = queriesFile.basesSize
+                    / ProgramParameters.queryLength;
 
+            for (int queryNum = 1; queryNum < numQueries - 1; ++queryNum) {
                 outputLine.setLength(0);
 
-                int queryNum = queryPosition / ProgramParameters.queryLength;
+                // int queryNum = queryPosition / ProgramParameters.queryLength;
                 Match match = resultsByQueryPos[queryNum];
 
                 try {
@@ -92,9 +74,10 @@ public class ElandOutput {
                     } else {
                         int len = queriesFile.headerStart[queryNum]
                                 - queriesFile.headerStart[queryNum - 1];
-                        outputLine.append(bytesToChars(queriesFile.headers,
-                                charBuf, queriesFile.headerStart[queryNum - 1],
-                                len), 0, len);
+                        outputLine.append(OutputUtil.bytesToChars(
+                                queriesFile.headers, charBuf,
+                                queriesFile.headerStart[queryNum - 1], len), 0,
+                                len);
                     }
                 } catch (Throwable t) {
                     System.out.println(t);
@@ -106,8 +89,10 @@ public class ElandOutput {
                     // TODO temporary addition of stats columns
                     // outputLine.append("0\t0\t0\t0\t0\t");
 
-                    outputLine.append(bytesToChars(queriesFile.bases, charBuf,
-                            queryPosition, ProgramParameters.queryLength), 0,
+                    outputLine.append(OutputUtil.bytesToChars(
+                            queriesFile.bases, charBuf, queryNum
+                                    * ProgramParameters.queryLength,
+                            ProgramParameters.queryLength), 0,
                             ProgramParameters.queryLength);
                     outputLine.append("\t");
                     outputLine.append("NM");
@@ -126,29 +111,29 @@ public class ElandOutput {
 
                     ++totalMatches;
 
-                    if (match.mismatchData[match.numMismatches] == 1) {
+                    if (mismatchCounts[match.numMismatches][queryNum] == 1) {
                         ++totalUniqueMatches;
                         totalBases += match.length;
 
                         int len = match.length;
-                        outputLine
-                                .append(bytesToChars(queriesFile.bases,
-                                        charBuf, queryPosition
-                                                + match.startOffset, len), 0,
-                                        len);
+                        outputLine.append(OutputUtil.bytesToChars(
+                                queriesFile.bases, charBuf, queryNum
+                                        * ProgramParameters.queryLength
+                                        + match.startOffset, len), 0, len);
                         outputLine.append("\t");
 
                         outputLine.append("U");
                         outputLine.append(match.numMismatches);
                         outputLine.append("\t");
                     } else {
-                        outputLine.append(bytesToChars(queriesFile.bases,
-                                charBuf, queryPosition,
+                        outputLine.append(OutputUtil.bytesToChars(
+                                queriesFile.bases, charBuf, queryNum
+                                        * ProgramParameters.queryLength,
                                 ProgramParameters.queryLength), 0,
                                 ProgramParameters.queryLength);
                         outputLine.append("\t");
 
-                        if (match.mismatchData[match.numMismatches] > 0) {
+                        if (mismatchCounts[match.numMismatches][queryNum] > 0) {
                             outputLine.append("R");
                             outputLine.append(match.numMismatches);
                             outputLine.append("\t");
@@ -158,7 +143,7 @@ public class ElandOutput {
 
                     for (int i = 0; i <= ProgramParameters.maxMismatches
                             && i <= 2; ++i) {
-                        outputLine.append(match.mismatchData[i]);
+                        outputLine.append((int) mismatchCounts[i][queryNum]);
                         outputLine.append("\t");
                     }
 
@@ -166,15 +151,22 @@ public class ElandOutput {
                         outputLine.append("0\t");
                     }
 
-                    if (match.mismatchData[match.numMismatches] == 1) {
+                    if (mismatchCounts[match.numMismatches][queryNum] == 1) {
                         int forwardPosition = 0;
                         boolean reverse = false;
                         InputFile referenceFile = referenceFiles
                                 .get(match.referenceFile);
 
-                        int segmentNum = 0;
-                        while (match.referencePosition > referenceFile.segmentEnd[segmentNum])
-                            ++segmentNum;
+                        int segmentNum = Arrays.binarySearch(
+                                referenceFile.segmentEnd,
+                                match.referencePosition);
+                        if (segmentNum < 0) {
+                            segmentNum = (-segmentNum) - 1;
+                        }
+
+                        // while (match.referencePosition >
+                        // referenceFile.segmentEnd[segmentNum])
+                        // ++segmentNum
 
                         if (segmentNum % 2 == 1) {
                             reverse = true;
@@ -199,7 +191,7 @@ public class ElandOutput {
                             int headerNum = segmentNum / 2;
                             int len = referenceFile.headerStart[headerNum + 1]
                                     - referenceFile.headerStart[headerNum];
-                            outputLine.append(bytesToChars(
+                            outputLine.append(OutputUtil.bytesToChars(
                                     referenceFile.headers, charBuf,
                                     referenceFile.headerStart[headerNum], len),
                                     0, len);
@@ -212,11 +204,15 @@ public class ElandOutput {
                         outputLine.append("\t.\t");
 
                         for (int i = 0; i < match.numMismatches; ++i) {
-                            outputLine.append(match.mismatchData[i * 2 + ProgramParameters.maxMismatches + 1]
+                            outputLine.append(match.mismatchData[i * 2]
                                     - match.startOffset);
                             outputLine
-                                    .append((char) match.mismatchData[i * 2 + 1 + ProgramParameters.maxMismatches + 1]);
-                            outputLine.append(" ");
+                                    .append((char) match.mismatchData[i * 2 + 1]);
+                            outputLine.append("\t");
+                        }
+
+                        for (int i = match.numMismatches; i < 2; ++i) {
+                            outputLine.append("\t");
                         }
                     }
                 }
@@ -237,14 +233,7 @@ public class ElandOutput {
             throw new SearchException(e);
         }
 
+        TimerEvent.EVENT_WRITE_OUTPUT.stop();
     }
 
-    private static char[] bytesToChars(byte[] byteBuf, char charBuf[],
-            int offset, int length) {
-        int byteBufPos = offset;
-        for (int i = 0; i < length; ++i) {
-            charBuf[i] = (char) byteBuf[byteBufPos++];
-        }
-        return charBuf;
-    }
 }

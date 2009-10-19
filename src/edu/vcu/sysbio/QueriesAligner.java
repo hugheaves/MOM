@@ -1,6 +1,9 @@
 /*
  * $Log: QueriesAligner.java,v $
- * Revision 1.6  2009/03/31 15:47:28  hugh
+ * Revision 1.7  2009/10/19 17:37:03  hugh
+ * Revised.
+ *
+ * Revision 1.6  2009-03-31 15:47:28  hugh
  * Updated for 0.2 release
  *
  * Revision 1.5  2008-09-27 17:08:38  hugh
@@ -42,9 +45,9 @@ public class QueriesAligner extends Aligner implements KmerProcessor {
     private KmerIndex referenceIndex;
 
     public QueriesAligner(InputFile queriesFile, KmerIndex referenceIndex,
-            Match[] results, int[] checkedPositions) {
+            Match[] results, char[][] matchCounts, int[] checkedPositions) {
         super(referenceIndex.file.bases, queriesFile.bases,
-                referenceIndex.file.fileNum, results);
+                referenceIndex.file.fileNum, results, matchCounts);
 
         this.referenceIndex = referenceIndex;
         this.matchPositions = new IntOpenHashSet();
@@ -137,7 +140,6 @@ public class QueriesAligner extends Aligner implements KmerProcessor {
             int pos = i.nextInt();
             doAlignment(pos, queryPos);
         }
-
     }
 
     protected void processMatch(int referencePosition, int queryPosition,
@@ -152,25 +154,20 @@ public class QueriesAligner extends Aligner implements KmerProcessor {
         if (longestMatchLength > match.length
                 || longestMatchLength == match.length
                 && longestMatchMismatches < match.numMismatches) {
-            match.setBestMatch(fileNum, referencePosition + compareOffset,
-                    queryPosition + compareOffset, longestMatchPosition
-                            - compareOffset, longestMatchLength,
-                    longestMatchMismatches);
+            match.setMatchData(fileNum, referencePosition, queryPosition,
+                    longestMatchPosition, longestMatchLength,
+                    longestMatchMismatches, compareOffset, reference,
+                    longestMatchMismatchesOffset, mismatchOffsets);
 
-            if (longestMatchMismatches > 0) {
-                int j = ProgramParameters.maxMismatches + 1;
-                for (int i = 0; i < longestMatchMismatches; ++i) {
-                    int offset = mismatchOffsets[longestMatchMismatchesOffset
-                            - longestMatchMismatches + i];
-                    match.mismatchData[j++] = (byte) (offset - compareOffset + 1);
-                    match.mismatchData[j++] = reference[referencePosition
-                            + offset];
-                }
+            for (int i = 0; i <= ProgramParameters.maxMismatches; ++i) {
+                mismatchCounts[i][queryNum] = 0;
             }
+            mismatchCounts[longestMatchMismatches][queryNum] = 1;
+
             matchPositions.add(referencePosition + compareOffset);
         } else if (longestMatchLength == match.length) {
             if (matchPositions.add(referencePosition + compareOffset)) {
-                ++match.mismatchData[longestMatchMismatches];
+                ++mismatchCounts[longestMatchMismatches][queryNum];
             }
         }
     }
